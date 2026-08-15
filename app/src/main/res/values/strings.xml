@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Lokaler Live-Chat</string>
+    <string name="notification_channel_name">Live-Modus</string>
+    <string name="notification_channel_description">Laeuft, solange das Gespraech aktiv ist.</string>
+</resources>
