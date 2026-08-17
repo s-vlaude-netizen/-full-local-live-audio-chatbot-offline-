@@ -41,7 +41,8 @@ schneller und sparsamer als alles, was man daneben stellen könnte.
 1. **APK holen.** Unter *Actions* → letzter grüner Lauf des Workflows „Android“ →
    Artefakt `lokaler-live-chat-debug-apk` herunterladen und entpacken.
 2. **Installieren.** Es ist ein Debug-Build, also „Installation aus unbekannter
-   Quelle“ erlauben.
+   Quelle“ erlauben. Gebaut wird nur für **arm64-v8a** — das trifft jedes
+   Telefon der letzten Jahre, aber keinen x86-Emulator.
 3. **Starten.** Ohne Modelldatei antwortet ein Platzhalter — damit lässt sich die
    komplette Sprachschleife (Mikrofon, Erkennung, Vorlesen) schon prüfen.
 

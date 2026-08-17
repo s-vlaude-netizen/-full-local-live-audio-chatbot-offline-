@@ -14,6 +14,14 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+
+        ndk {
+            // Die MediaPipe-Nativbibliotheken sind gross. Ohne Filter landen sie
+            // fuer vier Architekturen im APK - x86 braucht hier niemand, und
+            // Telefone sind seit Jahren arm64. Das spart den grossen Teil der
+            // Downloadgroesse und der Packzeit.
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
     buildTypes {
