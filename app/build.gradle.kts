@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,7 +8,7 @@ plugins {
 
 android {
     namespace = "de.localvoice.livechat"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "de.localvoice.livechat"
@@ -40,8 +42,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
+    // Die kotlinOptions-DSL von AGP ist ab Kotlin 2.2 abgekuendigt.
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
     }
 
     buildFeatures {

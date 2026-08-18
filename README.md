@@ -120,7 +120,7 @@ und Abkürzungen gelten dabei nicht als Satzende.
 ./gradlew testDebugUnitTest    # Logik-Tests
 ```
 
-Voraussetzung: JDK 17 und ein Android SDK mit API 35.
+Voraussetzung: JDK 17 und ein Android SDK mit API 36.
 
 ## Was noch nicht geht
 
