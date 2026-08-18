@@ -60,7 +60,7 @@ class ModelRepository(private val context: Context) {
     suspend fun import(uri: Uri, onProgress: (copied: Long, total: Long) -> Unit): Result<File> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val name = displayName(uri) ?: "modell-${System.currentTimeMillis()}.task"
+                val name = displayName(uri) ?: "modell-${System.currentTimeMillis()}.litertlm"
                 require(name.substringAfterLast('.', "").lowercase() in SUPPORTED_EXTENSIONS) {
                     "Nicht unterstuetztes Format: $name"
                 }
@@ -115,6 +115,6 @@ class ModelRepository(private val context: Context) {
     }
 
     private companion object {
-        val SUPPORTED_EXTENSIONS = setOf("task", "bin", "litertlm")
+        val SUPPORTED_EXTENSIONS = setOf("litertlm")
     }
 }

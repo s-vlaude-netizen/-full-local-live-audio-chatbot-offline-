@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,7 +41,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.localvoice.livechat.data.LocalModel
-import de.localvoice.livechat.domain.PromptTemplate
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,7 +80,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             Section(title = "Modell") {
                 if (models.isEmpty()) {
                     Text(
-                        "Noch keine Modelldatei gefunden. Ohne Modell antwortet nur der " +
+                        "Noch keine .litertlm-Datei gefunden. Ohne Modell antwortet nur der " +
                             "Platzhalter - die Sprachschleife laesst sich damit aber schon testen.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -151,24 +149,6 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 )
             }
 
-            Section(title = "Chat-Vorlage") {
-                Text(
-                    "Muss zum Modell passen. Gemma-Buendel brauchen GEMMA, " +
-                        "Qwen und Phi meist CHATML.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PromptTemplate.entries.forEach { template ->
-                        FilterChip(
-                            selected = settings.template == template,
-                            onClick = { viewModel.updateSettings { it.copy(template = template) } },
-                            label = { Text(template.name) },
-                        )
-                    }
-                }
-            }
-
             Section(title = "Verhalten") {
                 SwitchRow(
                     title = "Freihand-Modus",
@@ -233,16 +213,6 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     format = { String.format("%.2f", it) },
                     onChange = { value ->
                         viewModel.updateSettings { it.copy(temperature = value) }
-                    },
-                )
-                SliderRow(
-                    label = "Maximale Laenge (Token)",
-                    value = settings.maxTokens.toFloat(),
-                    range = 256f..4096f,
-                    steps = 14,
-                    format = { it.roundToInt().toString() },
-                    onChange = { value ->
-                        viewModel.updateSettings { it.copy(maxTokens = value.roundToInt()) }
                     },
                 )
                 SliderRow(

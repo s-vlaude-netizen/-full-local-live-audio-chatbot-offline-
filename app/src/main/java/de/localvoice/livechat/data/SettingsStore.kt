@@ -1,7 +1,6 @@
 package de.localvoice.livechat.data
 
 import android.content.Context
-import de.localvoice.livechat.domain.PromptTemplate
 import de.localvoice.livechat.llm.LlmConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,11 +10,9 @@ import kotlinx.coroutines.flow.asStateFlow
 data class AppSettings(
     val modelFileName: String? = null,
     val useGpu: Boolean = false,
-    val maxTokens: Int = 1024,
     val temperature: Float = 0.8f,
     val topK: Int = 40,
     val topP: Float = 0.95f,
-    val template: PromptTemplate = PromptTemplate.GEMMA,
     val systemPrompt: String = LlmConfig.DEFAULT_SYSTEM_PROMPT,
     val sttLanguageTag: String = "de-DE",
     val ttsLanguageTag: String = "de-DE",
@@ -27,12 +24,10 @@ data class AppSettings(
     val freshStart: Boolean = false,
 ) {
     fun toLlmConfig(): LlmConfig = LlmConfig(
-        maxTokens = maxTokens,
         topK = topK,
         topP = topP,
         temperature = temperature,
         useGpu = useGpu,
-        template = template,
         systemPrompt = systemPrompt,
     )
 }
@@ -61,15 +56,9 @@ class SettingsStore(context: Context) {
         return AppSettings(
             modelFileName = prefs.getString(KEY_MODEL, null),
             useGpu = prefs.getBoolean(KEY_GPU, defaults.useGpu),
-            maxTokens = prefs.getInt(KEY_MAX_TOKENS, defaults.maxTokens),
             temperature = prefs.getFloat(KEY_TEMPERATURE, defaults.temperature),
             topK = prefs.getInt(KEY_TOP_K, defaults.topK),
             topP = prefs.getFloat(KEY_TOP_P, defaults.topP),
-            template = runCatching {
-                PromptTemplate.valueOf(
-                    prefs.getString(KEY_TEMPLATE, defaults.template.name) ?: defaults.template.name
-                )
-            }.getOrDefault(defaults.template),
             systemPrompt = prefs.getString(KEY_SYSTEM_PROMPT, defaults.systemPrompt)
                 ?: defaults.systemPrompt,
             sttLanguageTag = prefs.getString(KEY_STT_LANG, defaults.sttLanguageTag)
@@ -87,11 +76,9 @@ class SettingsStore(context: Context) {
         prefs.edit().apply {
             putString(KEY_MODEL, settings.modelFileName)
             putBoolean(KEY_GPU, settings.useGpu)
-            putInt(KEY_MAX_TOKENS, settings.maxTokens)
             putFloat(KEY_TEMPERATURE, settings.temperature)
             putInt(KEY_TOP_K, settings.topK)
             putFloat(KEY_TOP_P, settings.topP)
-            putString(KEY_TEMPLATE, settings.template.name)
             putString(KEY_SYSTEM_PROMPT, settings.systemPrompt)
             putString(KEY_STT_LANG, settings.sttLanguageTag)
             putString(KEY_TTS_LANG, settings.ttsLanguageTag)
@@ -105,11 +92,9 @@ class SettingsStore(context: Context) {
     private companion object {
         const val KEY_MODEL = "model_file"
         const val KEY_GPU = "use_gpu"
-        const val KEY_MAX_TOKENS = "max_tokens"
         const val KEY_TEMPERATURE = "temperature"
         const val KEY_TOP_K = "top_k"
         const val KEY_TOP_P = "top_p"
-        const val KEY_TEMPLATE = "template"
         const val KEY_SYSTEM_PROMPT = "system_prompt"
         const val KEY_STT_LANG = "stt_lang"
         const val KEY_TTS_LANG = "tts_lang"

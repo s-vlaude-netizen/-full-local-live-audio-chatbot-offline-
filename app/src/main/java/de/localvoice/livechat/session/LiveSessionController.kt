@@ -9,14 +9,13 @@ import de.localvoice.livechat.data.AppSettings
 import de.localvoice.livechat.data.ModelRepository
 import de.localvoice.livechat.data.SettingsStore
 import de.localvoice.livechat.domain.ChatMessage
-import de.localvoice.livechat.domain.History
 import de.localvoice.livechat.domain.Role
 import de.localvoice.livechat.domain.SentenceChunker
 import de.localvoice.livechat.domain.SpeechText
 import de.localvoice.livechat.domain.VoiceCommands
 import de.localvoice.livechat.llm.FallbackLlmEngine
 import de.localvoice.livechat.llm.LlmEngine
-import de.localvoice.livechat.llm.MediaPipeLlmEngine
+import de.localvoice.livechat.llm.LiteRtLmEngine
 import de.localvoice.livechat.speech.AndroidSpeaker
 import de.localvoice.livechat.speech.AndroidSpeechToText
 import de.localvoice.livechat.speech.Speaker
@@ -270,8 +269,7 @@ class LiveSessionController(
 
         try {
             val llm = ensureEngine()
-            val history = History.trim(_messages.value.dropLast(1), MAX_HISTORY_MESSAGES)
-            llm.generate(history).collect { delta ->
+            llm.generate(_messages.value.dropLast(1)).collect { delta ->
                 collected.append(delta)
                 updateMessage(assistantId, SpeechText.forDisplay(collected.toString()), streaming = true)
                 if (speakAloud) {
@@ -356,11 +354,9 @@ class LiveSessionController(
         val signature = buildString {
             append(settings.modelFileName).append('|')
             append(settings.useGpu).append('|')
-            append(settings.maxTokens).append('|')
             append(settings.temperature).append('|')
             append(settings.topK).append('|')
             append(settings.topP).append('|')
-            append(settings.template).append('|')
             append(settings.systemPrompt.hashCode())
         }
         engine?.let { if (engineSignature == signature) return it }
@@ -373,7 +369,7 @@ class LiveSessionController(
             FallbackLlmEngine()
         } else {
             runCatching {
-                MediaPipeLlmEngine.create(context, modelFile, settings.toLlmConfig())
+                LiteRtLmEngine.create(context, modelFile, settings.toLlmConfig())
             }.getOrElse { t ->
                 Log.e(TAG, "Modell ${modelFile.name} liess sich nicht laden", t)
                 _error.value = "Modell ${modelFile.name} liess sich nicht laden: ${t.message}"
@@ -416,7 +412,6 @@ class LiveSessionController(
 
     private companion object {
         const val TAG = "LiveSessionController"
-        const val MAX_HISTORY_MESSAGES = 12
         const val MAX_SILENT_ROUNDS = 6
         const val RETRY_DELAY_MS = 800L
     }

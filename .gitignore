@@ -13,3 +13,4 @@ local.properties
 *.task
 *.bin
 *.gguf
+*.litertlm

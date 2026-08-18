@@ -1,17 +1,14 @@
 package de.localvoice.livechat.llm
 
 import de.localvoice.livechat.domain.ChatMessage
-import de.localvoice.livechat.domain.PromptTemplate
 import kotlinx.coroutines.flow.Flow
 
 /** Laufzeit-Parameter der Textgenerierung. */
 data class LlmConfig(
-    val maxTokens: Int = 1024,
     val topK: Int = 40,
     val topP: Float = 0.95f,
     val temperature: Float = 0.8f,
     val useGpu: Boolean = false,
-    val template: PromptTemplate = PromptTemplate.GEMMA,
     val systemPrompt: String = DEFAULT_SYSTEM_PROMPT,
 ) {
     companion object {
@@ -26,8 +23,8 @@ data class LlmConfig(
 /**
  * Ein lokales Sprachmodell.
  *
- * Implementierungen halten ihre eigene Sitzung; [generate] darf immer nur einmal
- * gleichzeitig laufen.
+ * Implementierungen halten ihre eigene Sitzung samt Verlauf; [generate] darf
+ * immer nur einmal gleichzeitig laufen.
  */
 interface LlmEngine {
 
@@ -38,11 +35,12 @@ interface LlmEngine {
      * Erzeugt die Antwort auf den Verlauf. Der Flow liefert Bruchstuecke
      * (Deltas), nicht den bisher vollstaendigen Text.
      *
-     * @param history endet mit der neuen Nutzer-Nachricht.
+     * @param history endet mit der neuen Nutzer-Nachricht. Motoren, die den
+     * Verlauf selbst mitfuehren, brauchen davon nur den letzten Eintrag.
      */
     fun generate(history: List<ChatMessage>): Flow<String>
 
-    /** Verwirft den Sitzungszustand, der naechste Aufruf beginnt von vorn. */
+    /** Verwirft den Sitzungszustand, das naechste Gespraech beginnt von vorn. */
     fun resetSession()
 
     fun close()

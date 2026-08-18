@@ -4,7 +4,7 @@ Eine Android-App für den Freihand-Sprachmodus, den man von den großen Chat-App
 kennt — nur vollständig offline. Flugmodus an, sprechen, zuhören, weitersprechen.
 Kein Byte verlässt das Gerät.
 
-Die Schleife ist genau die, die man erwartet:
+Die Schleife:
 
 ```
 zuhören  ─►  verstehen  ─►  denken  ─►  vorlesen  ─┐
@@ -15,6 +15,22 @@ zuhören  ─►  verstehen  ─►  denken  ─►  vorlesen  ─┐
 Nach jeder Antwort geht das Mikrofon von selbst wieder auf. „Stopp“ beendet das
 Gespräch, ohne dass man den Bildschirm anfassen muss.
 
+## Download
+
+**[Aktuelles APK aus dem letzten Build herunterladen][release-apk]**
+
+[![Android](https://github.com/s-vlaude-netizen/-full-local-live-audio-chatbot-offline-/actions/workflows/android.yml/badge.svg)](https://github.com/s-vlaude-netizen/-full-local-live-audio-chatbot-offline-/actions/workflows/android.yml)
+
+Das Release [`dev-latest`][release] wird bei jedem grünen Build ersetzt und
+enthält immer den aktuellen Stand. Es ist ein Debug-Build, für die Installation
+muss „Installation aus unbekannter Quelle“ erlaubt sein. Gebaut wird nur für
+**arm64-v8a** — das trifft jedes Telefon der letzten Jahre, aber keinen
+x86-Emulator.
+
+Ohne Modelldatei antwortet ein Platzhalter. Damit lässt sich die komplette
+Sprachschleife — Mikrofon, Erkennung, Vorlesen — direkt nach der Installation
+prüfen, bevor man ein halbes Gigabyte lädt.
+
 ## Wie das offline funktioniert
 
 Drei Bausteine, alle auf dem Gerät:
@@ -22,50 +38,35 @@ Drei Bausteine, alle auf dem Gerät:
 | Schritt | Umsetzung | Woher |
 |---|---|---|
 | Sprache → Text | `SpeechRecognizer`, ab Android 13 der geräteinterne Erkenner, sonst mit `EXTRA_PREFER_OFFLINE` | Android-Bordmittel + Offline-Sprachpaket |
-| Text → Text | MediaPipe LLM Inference (Google AI Edge) | `.task`-Datei, die du selbst ablegst |
+| Text → Text | [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) (Google AI Edge) | `.litertlm`-Datei, die man selbst ablegt |
 | Text → Sprache | `TextToSpeech` mit einer Stimme, die keine Netzverbindung braucht | Android-Bordmittel + Offline-Stimme |
 
-Zu deiner Frage aus der Beschreibung: **Gemini Nano** wäre der naheliegende
-Kandidat, ist aber über ML Kit GenAI / AICore an wenige Geräte gebunden (Pixel 9
-aufwärts, ausgewählte Galaxy-Modelle) und lässt sich nicht mitliefern. Deshalb
-läuft hier **MediaPipe LLM Inference**: dieselbe Idee, aber auf jedem halbwegs
-aktuellen Android-Telefon, und du entscheidest selbst, welches Modell drin liegt.
-Gemma 3 1B ist der empfohlene Start.
+Sprache-zu-Text und Text-zu-Text sind bewusst getrennte Modelle. Ein 1B-Modell
+kann kein Audio, und Androids Offline-Erkennung ist schneller und sparsamer als
+alles, was man daneben stellen könnte.
 
-Sprache-zu-Text macht bewusst **nicht** dasselbe Modell. Ein 1B-Sprachmodell kann
-kein Audio; Android bringt eine gute Offline-Erkennung ohnehin mit, und die ist
-schneller und sparsamer als alles, was man daneben stellen könnte.
-
-## Erste Version ausprobieren
-
-1. **APK holen.** Unter *Actions* → letzter grüner Lauf des Workflows „Android“ →
-   Artefakt `lokaler-live-chat-debug-apk` herunterladen und entpacken.
-2. **Installieren.** Es ist ein Debug-Build, also „Installation aus unbekannter
-   Quelle“ erlauben. Gebaut wird nur für **arm64-v8a** — das trifft jedes
-   Telefon der letzten Jahre, aber keinen x86-Emulator.
-3. **Starten.** Ohne Modelldatei antwortet ein Platzhalter — damit lässt sich die
-   komplette Sprachschleife (Mikrofon, Erkennung, Vorlesen) schon prüfen.
-
-Danach das eigentliche Modell nachlegen (siehe unten).
+LiteRT-LM führt Chat-Vorlage, Systemanweisung und Gesprächsverlauf selbst mit.
+Die App schickt pro Zug nur die neue Äußerung und bekommt die Antwort
+stückweise zurück; ein eigener Prompt-Zusammenbau würde die Vorlage des Modells
+doppelt anwenden.
 
 ## Offline-Pakete des Systems
 
-Ohne die geht es nicht, und beide sind einmalig einzurichten:
+Beide sind einmalig einzurichten, ohne sie geht es nicht:
 
 - **Spracherkennung:** Einstellungen → System → Sprachen & Eingabe →
   Spracheingabe → Offline-Spracherkennung → Deutsch herunterladen.
 - **Sprachausgabe:** Einstellungen → Bedienungshilfen → Text-in-Sprache-Ausgabe
-  → Sprachdaten installieren → Deutsch. Wichtig: eine Stimme wählen, die ohne
-  Netz funktioniert. Die App sucht sich automatisch eine solche und sagt es,
-  wenn nur eine Online-Stimme da ist.
+  → Sprachdaten installieren → Deutsch. Wichtig ist eine Stimme, die ohne Netz
+  funktioniert. Die App sucht sich automatisch eine solche und meldet es, wenn
+  nur eine Online-Stimme vorhanden ist.
 
 ## Modell ablegen
 
-Empfohlen: **Gemma 3 1B IT (int4)** als `.task`-Bündel, rund 550 MB. Zu finden
-bei LiteRT / Google AI Edge auf Hugging Face oder Kaggle (Lizenz von Google
-bestätigen, dann herunterladen).
+Erwartet wird eine `.litertlm`-Datei. Empfohlen: **Gemma 3 1B IT (int4)**, rund
+550 MB, zu finden bei Google AI Edge / LiteRT auf Hugging Face oder Kaggle.
 
-Zwei Wege, es aufs Gerät zu bekommen:
+Zwei Wege aufs Gerät:
 
 **Per App:** Einstellungen → *Modelldatei wählen* → Datei aussuchen. Die App
 kopiert sie in ihren Ordner.
@@ -73,15 +74,12 @@ kopiert sie in ihren Ordner.
 **Per Kabel** (schneller bei großen Dateien):
 
 ```bash
-adb push gemma3-1b-it-int4.task \
+adb push gemma3-1b-it-int4.litertlm \
   /sdcard/Android/data/de.localvoice.livechat/files/models/
 ```
 
 Danach in den Einstellungen *Ordner neu einlesen* und das Modell auswählen. Der
-exakte Pfad steht dort auch noch einmal.
-
-Andere Modelle gehen ebenfalls — bei Qwen oder Phi in den Einstellungen die
-Chat-Vorlage auf `CHATML` stellen, sonst redet das Modell an sich vorbei.
+exakte Pfad steht dort ebenfalls.
 
 ## Bedienung
 
@@ -90,16 +88,16 @@ Chat-Vorlage auf `CHATML` stellen, sonst redet das Modell an sich vorbei.
 - **Antwort abbrechen** — der Stop-Knopf rechts; die App hört sofort wieder zu.
 - **Tippen statt sprechen** — Tastatursymbol links, funktioniert auch bei
   ausgeschaltetem Live-Modus.
-- Eine Benachrichtigung zeigt den Zustand und hält die Sitzung am Leben, während
-  du in einer anderen App Notizen machst.
+- Eine Benachrichtigung zeigt den Zustand und hält die Sitzung am Leben,
+  während in einer anderen App Notizen entstehen.
 
 ## Aufbau
 
 ```
 app/src/main/java/de/localvoice/livechat/
-├─ domain/       reine Logik, ohne Android: Satzzerlegung, Prompt-Vorlagen,
-│                Verlaufskürzung, Aufräumen der Modellausgabe (unit-getestet)
-├─ llm/          LlmEngine + MediaPipe-Umsetzung + Platzhalter ohne Modell
+├─ domain/       reine Logik, ohne Android: Satzzerlegung, Aufräumen der
+│                Modellausgabe, Sprachbefehle (unit-getestet)
+├─ llm/          LlmEngine + LiteRT-LM-Umsetzung + Platzhalter ohne Modell
 ├─ speech/       SpeechRecognizer- und TextToSpeech-Hüllen
 ├─ session/      LiveSessionController: die Zustandsmaschine der Schleife
 ├─ service/      Vordergrunddienst, damit es bei ausgeschaltetem Bildschirm läuft
@@ -113,7 +111,7 @@ oder ein Wechsel in eine andere App reißt das Gespräch nicht ab.
 Damit die Antwort nicht erst komplett fertig sein muss, bevor etwas zu hören
 ist, schneidet der `SentenceChunker` den Token-Strom an Satzgrenzen und schiebt
 jeden fertigen Satz sofort in die Sprachausgabe. Ordnungszahlen („am 3. Mai“)
-und Abkürzungen werden dabei nicht für Satzenden gehalten.
+und Abkürzungen gelten dabei nicht als Satzende.
 
 ## Selbst bauen
 
@@ -130,11 +128,14 @@ Voraussetzung: JDK 17 und ein Android SDK mit API 35.
   Barge-in bräuchte gleichzeitiges Aufnehmen und Abspielen samt
   Echo-Unterdrückung. Der Abbruch-Knopf ist der Behelf.
 - **Aufwecken per Schlüsselwort.** Der Live-Modus wird per Knopf gestartet.
-- **Sehr lange Gespräche.** Der Verlauf wird auf die letzten Turns gekürzt; ist
-  das Kontextfenster voll, beginnt die Sitzung mit gekürztem Verlauf neu.
+- **Sehr lange Gespräche.** Ist das Kontextfenster voll, beginnt das Gespräch
+  im Modell von vorn; der angezeigte Verlauf bleibt erhalten.
 - **Signierte Release-Builds.** Der CI baut bisher nur Debug.
 
 ## Datenschutz
 
-Die App fordert keine Netzwerkberechtigung an. Modelle liegen im App-eigenen
+Die App fordert keine Netzwerkberechtigung an. Modelle liegen im app-eigenen
 Ordner, der Verlauf nur im Arbeitsspeicher und ist nach dem Beenden weg.
+
+[release]: https://github.com/s-vlaude-netizen/-full-local-live-audio-chatbot-offline-/releases/tag/dev-latest
+[release-apk]: https://github.com/s-vlaude-netizen/-full-local-live-audio-chatbot-offline-/releases/latest/download/lokaler-live-chat-debug.apk
