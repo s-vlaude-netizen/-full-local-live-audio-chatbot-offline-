@@ -3,11 +3,13 @@ package de.localvoice.livechat.llm
 import android.content.Context
 import android.util.Log
 import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.SamplerConfig
 import de.localvoice.livechat.domain.ChatMessage
 import de.localvoice.livechat.domain.Role
@@ -44,8 +46,8 @@ class LiteRtLmEngine private constructor(
         val active = ensureConversation()
         try {
             active.sendMessageAsync(userText).collect { message ->
-                val chunk = message.text
-                if (!chunk.isNullOrEmpty()) emit(chunk)
+                val chunk = message.plainText()
+                if (chunk.isNotEmpty()) emit(chunk)
             }
         } catch (t: Throwable) {
             // Meist ein volles Kontextfenster. Der Zwischenspeicher ist danach
@@ -55,6 +57,19 @@ class LiteRtLmEngine private constructor(
             throw t
         }
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * Der Textanteil eines Antwort-Stuecks.
+     *
+     * Eine Message traegt eine Liste von Inhalten - neben Text auch Bilder,
+     * Audio oder Werkzeug-Antworten. Ueber toString() kaeme deren Objektform
+     * mit heraus und landete in der Sprachausgabe, deshalb hier gezielt nur
+     * die Textanteile.
+     */
+    private fun Message.plainText(): String =
+        contents.contents
+            .filterIsInstance<Content.Text>()
+            .joinToString(separator = "") { it.text }
 
     private fun ensureConversation(): Conversation {
         conversation?.let { return it }
