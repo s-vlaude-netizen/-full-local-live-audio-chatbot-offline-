@@ -2,7 +2,9 @@ package de.localvoice.livechat
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -23,7 +25,9 @@ import de.localvoice.livechat.service.LiveSessionService
 import de.localvoice.livechat.session.LiveState
 import de.localvoice.livechat.ui.LiveScreen
 import de.localvoice.livechat.ui.MainViewModel
+import de.localvoice.livechat.ui.ModelDownloadDialog
 import de.localvoice.livechat.ui.SettingsScreen
+import de.localvoice.livechat.ui.TokenNeededDialog
 import de.localvoice.livechat.ui.theme.LocalLiveChatTheme
 
 class MainActivity : ComponentActivity() {
@@ -43,6 +47,9 @@ private fun AppRoot() {
     val context = LocalContext.current
     val viewModel: MainViewModel = viewModel(factory = MainViewModel.Factory)
     val state by viewModel.session.state.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val models by viewModel.models.collectAsStateWithLifecycle()
+    val tokenNeededFor by viewModel.tokenNeededFor.collectAsStateWithLifecycle()
     var showSettings by remember { mutableStateOf(false) }
     var startAfterPermission by remember { mutableStateOf(false) }
 
@@ -60,6 +67,39 @@ private fun AppRoot() {
     LaunchedEffect(Unit) {
         viewModel.session.warmUp()
         viewModel.refreshModels()
+    }
+
+    // Beim ersten Start einmal nachfragen, wenn wirklich kein Modell da ist.
+    if (models.isEmpty() && !settings.downloadAsked) {
+        ModelDownloadDialog(
+            entries = viewModel.catalog,
+            onDownload = { entry ->
+                viewModel.markDownloadAsked()
+                viewModel.startDownload(entry)
+                showSettings = true
+            },
+            onDismiss = { viewModel.markDownloadAsked() },
+        )
+    }
+
+    tokenNeededFor?.let { entry ->
+        TokenNeededDialog(
+            entry = entry,
+            onOpenLicense = { url ->
+                runCatching {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }
+                viewModel.dismissTokenHint()
+                showSettings = true
+            },
+            onDismiss = {
+                viewModel.dismissTokenHint()
+                showSettings = true
+            },
+        )
     }
 
     if (showSettings) {

@@ -9,9 +9,16 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import de.localvoice.livechat.LiveChatApplication
 import de.localvoice.livechat.data.AppSettings
+import de.localvoice.livechat.data.CatalogEntry
+import de.localvoice.livechat.data.DownloadError
+import de.localvoice.livechat.data.DownloadException
+import de.localvoice.livechat.data.DownloadProgress
 import de.localvoice.livechat.data.LocalModel
+import de.localvoice.livechat.data.ModelCatalog
+import de.localvoice.livechat.data.ModelDownloader
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
@@ -36,6 +43,19 @@ class MainViewModel(application: Application) : ViewModel() {
 
     private val _importError = MutableStateFlow<String?>(null)
     val importError: StateFlow<String?> = _importError.asStateFlow()
+
+    private val downloader = ModelDownloader(container.models)
+
+    private val _download = MutableStateFlow<DownloadProgress?>(null)
+    val download: StateFlow<DownloadProgress?> = _download.asStateFlow()
+
+    /** Gesetzt, wenn das gewaehlte Modell erst nach Lizenzzustimmung laedt. */
+    private val _tokenNeededFor = MutableStateFlow<CatalogEntry?>(null)
+    val tokenNeededFor: StateFlow<CatalogEntry?> = _tokenNeededFor.asStateFlow()
+
+    private var downloadJob: Job? = null
+
+    val catalog: List<CatalogEntry> = ModelCatalog.ENTRIES
 
     val modelsDirPath: String get() = container.models.modelsDir.absolutePath
 
@@ -86,6 +106,53 @@ class MainViewModel(application: Application) : ViewModel() {
     fun dismissImportError() {
         _importError.value = null
     }
+
+    // ------------------------------------------------------------- Herunterladen
+
+    fun startDownload(entry: CatalogEntry) {
+        if (downloadJob?.isActive == true) return
+        _importError.value = null
+        _tokenNeededFor.value = null
+        downloadJob = viewModelScope.launch {
+            val token = container.settings.current.huggingFaceToken.takeIf { it.isNotBlank() }
+            val result = downloader.download(entry, token) { copied, total, fileName ->
+                _download.value = DownloadProgress(entry, fileName, copied, total)
+            }
+            _download.value = null
+            result
+                .onSuccess { file ->
+                    refreshModels()
+                    selectModel(file.name)
+                }
+                .onFailure { failure ->
+                    val error = (failure as? DownloadException)?.error
+                    when (error) {
+                        is DownloadError.NeedsToken -> _tokenNeededFor.value = error.entry
+                        is DownloadError.Message -> _importError.value = error.text
+                        null -> _importError.value =
+                            failure.message ?: "Der Download ist fehlgeschlagen."
+                    }
+                }
+        }
+    }
+
+    fun cancelDownload() {
+        downloadJob?.cancel()
+        downloadJob = null
+        _download.value = null
+        downloader.discardPartials()
+    }
+
+    fun dismissTokenHint() {
+        _tokenNeededFor.value = null
+    }
+
+    /** Merkt, dass die Startfrage gestellt wurde - sie kommt dann nicht wieder. */
+    fun markDownloadAsked() {
+        updateSettings { it.copy(downloadAsked = true) }
+    }
+
+    fun testSpeech() = session.testSpeech()
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

@@ -34,7 +34,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -149,6 +151,47 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 )
             }
 
+            Section(title = "Modell herunterladen") {
+                val download by viewModel.download.collectAsStateWithLifecycle()
+                if (download != null) {
+                    DownloadProgressRow(
+                        progress = download!!,
+                        onCancel = { viewModel.cancelDownload() },
+                    )
+                } else {
+                    var chosen by remember { mutableStateOf(viewModel.catalog.first()) }
+                    viewModel.catalog.forEach { entry ->
+                        CatalogRow(
+                            entry = entry,
+                            selected = entry == chosen,
+                            onSelect = { chosen = entry },
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = { viewModel.startDownload(chosen) }) {
+                        Text("Herunterladen")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Der Download ist der einzige Moment, in dem die App ins Netz geht. " +
+                            "Modelle mit Lizenzpflicht brauchen zusaetzlich ein Zugangstoken.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = settings.huggingFaceToken,
+                    onValueChange = { value ->
+                        viewModel.updateSettings { it.copy(huggingFaceToken = value.trim()) }
+                    },
+                    label = { Text("HuggingFace-Token (nur fuer Gemma noetig)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+            }
+
             Section(title = "Verhalten") {
                 SwitchRow(
                     title = "Freihand-Modus",
@@ -195,6 +238,21 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     label = { Text("Sprachausgabe (z. B. de-DE)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                )
+                Spacer(Modifier.height(8.dp))
+                val speechDiagnostics by viewModel.session.speechDiagnostics
+                    .collectAsStateWithLifecycle()
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Button(onClick = { viewModel.testSpeech() }) { Text("Ausgabe testen") }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    speechDiagnostics,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 SliderRow(
                     label = "Sprechtempo",

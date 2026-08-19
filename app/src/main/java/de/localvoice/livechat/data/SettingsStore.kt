@@ -22,6 +22,10 @@ data class AppSettings(
     val handsFree: Boolean = true,
     /** Verlauf bei jedem Start des Live-Modus leeren. */
     val freshStart: Boolean = false,
+    /** Zugangstoken fuer HuggingFace, noetig fuer Modelle mit Lizenzzustimmung. */
+    val huggingFaceToken: String = "",
+    /** Ob beim Start schon einmal nach dem Modell-Download gefragt wurde. */
+    val downloadAsked: Boolean = false,
 ) {
     fun toLlmConfig(): LlmConfig = LlmConfig(
         topK = topK,
@@ -69,6 +73,9 @@ class SettingsStore(context: Context) {
             pitch = prefs.getFloat(KEY_PITCH, defaults.pitch),
             handsFree = prefs.getBoolean(KEY_HANDS_FREE, defaults.handsFree),
             freshStart = prefs.getBoolean(KEY_FRESH_START, defaults.freshStart),
+            huggingFaceToken = prefs.getString(KEY_HF_TOKEN, defaults.huggingFaceToken)
+                ?: defaults.huggingFaceToken,
+            downloadAsked = prefs.getBoolean(KEY_DOWNLOAD_ASKED, defaults.downloadAsked),
         )
     }
 
@@ -86,6 +93,8 @@ class SettingsStore(context: Context) {
             putFloat(KEY_PITCH, settings.pitch)
             putBoolean(KEY_HANDS_FREE, settings.handsFree)
             putBoolean(KEY_FRESH_START, settings.freshStart)
+            putString(KEY_HF_TOKEN, settings.huggingFaceToken)
+            putBoolean(KEY_DOWNLOAD_ASKED, settings.downloadAsked)
         }.apply()
     }
 
@@ -102,5 +111,7 @@ class SettingsStore(context: Context) {
         const val KEY_PITCH = "pitch"
         const val KEY_HANDS_FREE = "hands_free"
         const val KEY_FRESH_START = "fresh_start"
+        const val KEY_HF_TOKEN = "hf_token"
+        const val KEY_DOWNLOAD_ASKED = "download_asked"
     }
 }

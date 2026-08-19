@@ -11,11 +11,17 @@ interface Speaker {
     /** Meldung, falls die Ausgabe nicht offline funktioniert - sonst null. */
     val warning: StateFlow<String?>
 
+    /** Was gerade benutzt wird, fuer die Fehlersuche in den Einstellungen. */
+    val diagnostics: StateFlow<String>
+
     /** Startet die Engine. Gibt false zurueck, wenn gar nichts gesprochen werden kann. */
     suspend fun prepare(): Boolean
 
     /** Haengt Text hinten an die Warteschlange an. */
     fun enqueue(text: String)
+
+    /** Leert die Warteschlange und sagt sofort diesen Satz - fuer den Testknopf. */
+    fun speakNow(text: String)
 
     /** Wartet, bis die Warteschlange leer ist. */
     suspend fun awaitIdle()

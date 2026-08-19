@@ -91,6 +91,9 @@ class LiveSessionController(
     private val _level = MutableStateFlow(0f)
     val level: StateFlow<Float> = _level.asStateFlow()
 
+    private val _speechDiagnostics = MutableStateFlow("Sprachausgabe noch nicht gestartet")
+    val speechDiagnostics: StateFlow<String> = _speechDiagnostics.asStateFlow()
+
     private var stt: SpeechToText? = null
     private var sttSignature: String? = null
     private var speaker: Speaker? = null
@@ -105,6 +108,7 @@ class LiveSessionController(
     private var loopJob: Job? = null
     private var turnJob: Job? = null
     private var relayJob: Job? = null
+    private var speakerRelayJob: Job? = null
 
     val isRunning: Boolean get() = loopJob?.isActive == true
 
@@ -259,6 +263,9 @@ class LiveSessionController(
     }
 
     private suspend fun runTurn(userText: String, speakAloud: Boolean) = turnMutex.withLock {
+        // Manche Erkenner halten die Aufnahme offen, bis man sie ausdruecklich
+        // abbricht. Dann kommt die Sprachausgabe nicht durch.
+        if (speakAloud) stt?.abort()
         appendMessage(Role.USER, userText, streaming = false)
         _state.value = LiveState.THINKING
         _statusDetail.value = "Ich denke nach"
@@ -346,7 +353,22 @@ class LiveSessionController(
         speaker = created
         speakerSignature = signature
         if (!ok) _error.value = "Die Sprachausgabe liess sich nicht starten."
-        created.warning.value?.let { _error.value = it }
+        speakerRelayJob?.cancel()
+        speakerRelayJob = scope.launch {
+            launch { created.warning.collect { it?.let { message -> _error.value = message } } }
+            launch { created.diagnostics.collect { _speechDiagnostics.value = it } }
+        }
+    }
+
+    /** Spricht einen festen Satz - damit laesst sich die Ausgabe pruefen. */
+    fun testSpeech() {
+        scope.launch {
+            _error.value = null
+            ensureSpeaker(settingsStore.current)
+            speaker?.speakNow(
+                "Die Sprachausgabe funktioniert. Wenn du das hoerst, ist alles in Ordnung."
+            )
+        }
     }
 
     private suspend fun ensureEngine(): LlmEngine {

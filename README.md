@@ -1,8 +1,9 @@
 # Lokaler Live-Chat
 
 Eine Android-App für den Freihand-Sprachmodus, den man von den großen Chat-Apps
-kennt — nur vollständig offline. Flugmodus an, sprechen, zuhören, weitersprechen.
-Kein Byte verlässt das Gerät.
+kennt — nur lokal. Flugmodus an, sprechen, zuhören, weitersprechen. Das Gespräch
+verlässt das Gerät nie; Netz braucht allein der einmalige Modell-Download, und
+auch der lässt sich umgehen.
 
 Die Schleife:
 
@@ -38,7 +39,7 @@ Drei Bausteine, alle auf dem Gerät:
 | Schritt | Umsetzung | Woher |
 |---|---|---|
 | Sprache → Text | `SpeechRecognizer`, ab Android 13 der geräteinterne Erkenner, sonst mit `EXTRA_PREFER_OFFLINE` | Android-Bordmittel + Offline-Sprachpaket |
-| Text → Text | [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) (Google AI Edge) | `.litertlm`-Datei, die man selbst ablegt |
+| Text → Text | [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) (Google AI Edge) | `.litertlm`-Datei, einmalig geladen oder von Hand abgelegt |
 | Text → Sprache | `TextToSpeech` mit einer Stimme, die keine Netzverbindung braucht | Android-Bordmittel + Offline-Stimme |
 
 Sprache-zu-Text und Text-zu-Text sind bewusst getrennte Modelle. Ein 1B-Modell
@@ -63,10 +64,32 @@ Beide sind einmalig einzurichten, ohne sie geht es nicht:
 
 ## Modell ablegen
 
-Erwartet wird eine `.litertlm`-Datei. Empfohlen: **Gemma 3 1B IT (int4)**, rund
-550 MB, zu finden bei Google AI Edge / LiteRT auf Hugging Face oder Kaggle.
+Erwartet wird eine `.litertlm`-Datei. Empfohlen: **Gemma 3 1B IT**, rund 0,6 GB.
 
-Zwei Wege aufs Gerät:
+**Beim ersten Start fragt die App**, ob sie ein Modell laden soll, und bietet
+eine kleine Auswahl an — orientiert an der Liste der Google-AI-Edge-Gallery.
+Der Download ist der einzige Moment, in dem die App ins Netz geht; er lässt sich
+abbrechen und setzt beim nächsten Versuch an derselben Stelle fort. Dieselbe
+Auswahl steht dauerhaft in den Einstellungen.
+
+Der genaue Dateiname ist nirgends fest verdrahtet: die App fragt das
+Dateiverzeichnis der Ablage ab und wählt selbst — bevorzugt die allgemeine
+Variante mit kleiner Quantisierung, keine, die auf einen bestimmten Chip
+zugeschnitten ist.
+
+### Gemma braucht eine Lizenzzustimmung
+
+Die Gemma-Ablagen auf Hugging Face sind *gated*: der Download klappt erst, wenn
+man eingeloggt der Lizenz zugestimmt hat. Dafür einmalig:
+
+1. Modellseite öffnen und der Lizenz zustimmen (die App verlinkt sie direkt).
+2. Auf Hugging Face unter *Settings → Access Tokens* ein Token mit Leserecht
+   anlegen.
+3. Das Token in den Einstellungen eintragen.
+
+Qwen 2.5 steht unter Apache-Lizenz und lädt ohne Token.
+
+### Von Hand ablegen
 
 **Per App:** Einstellungen → *Modelldatei wählen* → Datei aussuchen. Die App
 kopiert sie in ihren Ordner.
@@ -74,7 +97,7 @@ kopiert sie in ihren Ordner.
 **Per Kabel** (schneller bei großen Dateien):
 
 ```bash
-adb push gemma3-1b-it-int4.litertlm \
+adb push modell.litertlm \
   /sdcard/Android/data/de.localvoice.livechat/files/models/
 ```
 
@@ -131,11 +154,23 @@ Voraussetzung: JDK 17 und ein Android SDK mit API 36.
 - **Sehr lange Gespräche.** Ist das Kontextfenster voll, beginnt das Gespräch
   im Modell von vorn; der angezeigte Verlauf bleibt erhalten.
 - **Signierte Release-Builds.** Der CI baut bisher nur Debug.
+- **Anmeldung bei Hugging Face.** Statt eines Anmeldevorgangs im Browser wird
+  ein Zugangstoken von Hand eingetragen.
 
 ## Datenschutz
 
-Die App fordert keine Netzwerkberechtigung an. Modelle liegen im app-eigenen
-Ordner, der Verlauf nur im Arbeitsspeicher und ist nach dem Beenden weg.
+Das Gespräch selbst läuft vollständig auf dem Gerät: Erkennung, Sprachmodell und
+Sprachausgabe brauchen kein Netz.
+
+Netzzugriff gibt es an genau einer Stelle — beim Herunterladen einer
+Modelldatei von Hugging Face. Dafür hat die App die Berechtigung `INTERNET`.
+Wer das nicht will, legt die Datei von Hand ab (siehe oben); dann geht nie
+etwas hinaus. Ein hinterlegtes Zugangstoken wird nur an `huggingface.co`
+geschickt und nicht an das CDN weitergereicht, auf das der Download umgeleitet
+wird.
+
+Modelle liegen im app-eigenen Ordner, der Verlauf nur im Arbeitsspeicher und ist
+nach dem Beenden weg.
 
 [release]: https://github.com/s-vlaude-netizen/-full-local-live-audio-chatbot-offline-/releases/tag/dev-latest
 [release-apk]: https://github.com/s-vlaude-netizen/-full-local-live-audio-chatbot-offline-/releases/latest/download/lokaler-live-chat-debug.apk
