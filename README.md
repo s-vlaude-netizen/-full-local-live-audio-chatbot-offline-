@@ -188,6 +188,18 @@ fremder Quelle ist damit gefährlicher als bei einer App aus dem Play Store.
 installieren und vorher auf die Quelle schauen. Wer das nicht will, baut selbst
 (siehe oben) und ersetzt den Schlüssel unter `keystore/` durch einen eigenen.
 
+Der Fingerabdruck des Zertifikats lautet:
+
+```
+SHA-256  02:C5:01:D3:6F:83:A6:4D:87:CC:53:19:A3:B2:06:0B
+         9D:86:FB:85:A0:77:FF:7D:D4:32:3B:2C:A6:D4:80:0E
+```
+
+Der CI prüft ihn bei jedem Build und bricht ab, wenn er abweicht — ein
+versehentlich getauschter Schlüssel fällt so hier auf und nicht erst dann,
+wenn auf dem Telefon kein Update mehr durchgeht. Nachprüfen lässt er sich mit
+`apksigner verify --print-certs lokaler-live-chat.apk`.
+
 ## Datenschutz
 
 Das Gespräch selbst läuft vollständig auf dem Gerät: Erkennung, Sprachmodell und

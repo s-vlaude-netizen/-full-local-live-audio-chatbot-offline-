@@ -51,13 +51,25 @@ jobs:
 
       - name: APK benennen und Signatur pruefen
         run: |
+          set -euo pipefail
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/$APK_NAME"
-          # Die Signatur ist der ganze Zweck der Uebung - lieber hier merken
-          # als erst auf dem Telefon.
-          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "dist/$APK_NAME"
+
+          # Auf dem Runner liegen mehrere Build-Tools-Versionen nebeneinander;
+          # ohne Auswahl expandiert der Glob zu mehreren Pfaden.
+          apksigner=$(ls -1 "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
+          "$apksigner" verify --print-certs "dist/$APK_NAME" | tee signature.txt
+
+          # Der feste Schluessel ist der ganze Zweck der Uebung: weicht der
+          # Fingerabdruck ab, laesst sich das APK nicht mehr ueber den vorigen
+          # Stand installieren. Das soll hier auffallen, nicht auf dem Telefon.
+          if ! grep -qi "SHA-256 digest: $EXPECTED_FINGERPRINT" signature.txt; then
+            echo "::error::Signatur weicht vom erwarteten Schluessel ab - Updates wuerden brechen."
+            exit 1
+          fi
         env:
           APK_NAME: lokaler-live-chat.apk
+          EXPECTED_FINGERPRINT: 02c501d36f83a64d87cc5319a3b2060b9d86fb85a077ff7dd4323b2ca6d4800e
 
       - name: APK als Artefakt hochladen
         uses: actions/upload-artifact@v4
