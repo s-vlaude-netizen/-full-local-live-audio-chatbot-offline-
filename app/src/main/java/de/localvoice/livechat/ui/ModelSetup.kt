@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import de.localvoice.livechat.data.CatalogEntry
 import de.localvoice.livechat.data.DownloadProgress
+import de.localvoice.livechat.data.DownloadRetryPolicy
 import kotlin.math.roundToInt
 
 /**
@@ -115,7 +116,7 @@ fun CatalogRow(
 fun DownloadProgressRow(progress: DownloadProgress, onCancel: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
         val fraction = progress.fraction
-        if (fraction != null) {
+        if (fraction != null && !progress.waitingForRetry) {
             LinearProgressIndicator(
                 progress = { fraction },
                 modifier = Modifier.fillMaxWidth(),
@@ -127,7 +128,11 @@ fun DownloadProgressRow(progress: DownloadProgress, onCancel: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    progress.entry.title + " wird geladen",
+                    if (progress.waitingForRetry) {
+                        "Verbindung weg - neuer Versuch laeuft gleich"
+                    } else {
+                        progress.entry.title + " wird geladen"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Text(
@@ -138,17 +143,26 @@ fun DownloadProgressRow(progress: DownloadProgress, onCancel: () -> Unit) {
                             append(" (").append((fraction ?: 0f).times(100).roundToInt())
                             append(" %)")
                         }
+                        if (progress.attempt > 1) {
+                            append("  ·  Versuch ").append(progress.attempt)
+                            append(" von ").append(DownloadRetryPolicy.MAX_ATTEMPTS)
+                        }
                     },
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (progress.waitingForRetry) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
             }
-            OutlinedButton(onClick = onCancel) { Text("Abbrechen") }
+            OutlinedButton(onClick = onCancel) { Text("Anhalten") }
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            "Ein Abbruch ist kein Verlust - beim naechsten Versuch geht es an " +
-                "derselben Stelle weiter.",
+            "Faellt die Verbindung weg, geht es nach " +
+                "${DownloadRetryPolicy.WAIT_MILLIS / 1000} Sekunden von selbst weiter - " +
+                "an derselben Stelle. Auch Anhalten ist kein Verlust.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -77,9 +77,18 @@ Erwartet wird eine `.litertlm`-Datei. Empfohlen: **Gemma 3 1B IT**, rund 0,6 GB.
 
 **Beim ersten Start fragt die App**, ob sie ein Modell laden soll, und bietet
 eine kleine Auswahl an — orientiert an der Liste der Google-AI-Edge-Gallery.
-Der Download ist der einzige Moment, in dem die App ins Netz geht; er lässt sich
-abbrechen und setzt beim nächsten Versuch an derselben Stelle fort. Dieselbe
+Der Download ist der einzige Moment, in dem die App ins Netz geht. Dieselbe
 Auswahl steht dauerhaft in den Einstellungen.
+
+**Verbindungsabbrüche fängt er selbst ab.** Fällt das Netz weg — ein Router,
+der sich neu einwählt, reicht schon — wartet die App 10 Sekunden und macht
+genau dort weiter, wo sie aufgehört hat. Erst drei Fehlschläge *am Stück*
+beenden den Versuch; sobald wieder Bytes ankommen, beginnt die Zählung von
+vorn. Ein langer Download übersteht damit beliebig viele kurze Aussetzer.
+Auch „Anhalten“ wirft nichts weg: erneutes Herunterladen setzt fort.
+
+Über *Weitere suchen* fragt die App bei Hugging Face nach, welche Modelle
+aktuell zu LiteRT-LM passen, und zeigt nur die ohne Lizenzpflicht.
 
 Der genaue Dateiname ist nirgends fest verdrahtet: die App fragt das
 Dateiverzeichnis der Ablage ab und wählt selbst — bevorzugt die allgemeine

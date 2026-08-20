@@ -159,8 +159,11 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         onCancel = { viewModel.cancelDownload() },
                     )
                 } else {
+                    val online by viewModel.onlineCatalog.collectAsStateWithLifecycle()
+                    val catalogLoading by viewModel.catalogLoading.collectAsStateWithLifecycle()
+                    val entries = viewModel.catalog + online
                     var chosen by remember { mutableStateOf(viewModel.catalog.first()) }
-                    viewModel.catalog.forEach { entry ->
+                    entries.forEach { entry ->
                         CatalogRow(
                             entry = entry,
                             selected = entry == chosen,
@@ -168,16 +171,30 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         )
                     }
                     Spacer(Modifier.height(8.dp))
-                    Button(onClick = { viewModel.startDownload(chosen) }) {
-                        Text("Herunterladen")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { viewModel.startDownload(chosen) }) {
+                            Text("Herunterladen")
+                        }
+                        OutlinedButton(
+                            onClick = { viewModel.loadOnlineCatalog() },
+                            enabled = !catalogLoading,
+                        ) {
+                            Text(if (catalogLoading) "Suche laeuft…" else "Weitere suchen")
+                        }
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Der Download ist der einzige Moment, in dem die App ins Netz geht. " +
-                            "Modelle mit Lizenzpflicht brauchen zusaetzlich ein Zugangstoken.",
+                        "Der Download ist der einzige Moment, in dem die App ins Netz geht, " +
+                            "und er setzt nach einem Verbindungsabbruch von selbst fort. " +
+                            "Modelle mit Lizenzpflicht brauchen zusaetzlich ein Zugangstoken; " +
+                            "\"Weitere suchen\" listet nur solche ohne.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedButton(onClick = { viewModel.discardPartialDownloads() }) {
+                        Text("Angefangene Downloads verwerfen")
+                    }
                 }
 
                 Spacer(Modifier.height(12.dp))

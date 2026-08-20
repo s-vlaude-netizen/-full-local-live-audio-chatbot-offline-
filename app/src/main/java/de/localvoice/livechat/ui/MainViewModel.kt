@@ -115,8 +115,8 @@ class MainViewModel(application: Application) : ViewModel() {
         _tokenNeededFor.value = null
         downloadJob = viewModelScope.launch {
             val token = container.settings.current.huggingFaceToken.takeIf { it.isNotBlank() }
-            val result = downloader.download(entry, token) { copied, total, fileName ->
-                _download.value = DownloadProgress(entry, fileName, copied, total)
+            val result = downloader.download(entry, token) { progress ->
+                _download.value = progress
             }
             _download.value = null
             result
@@ -136,11 +136,49 @@ class MainViewModel(application: Application) : ViewModel() {
         }
     }
 
+    /**
+     * Haelt den Download an, wirft das Geladene aber nicht weg - ein erneutes
+     * "Herunterladen" setzt an derselben Stelle fort.
+     */
     fun cancelDownload() {
         downloadJob?.cancel()
         downloadJob = null
         _download.value = null
-        downloader.discardPartials()
+    }
+
+    /** Wirft angefangene Bruchstuecke weg und faengt beim naechsten Mal von vorn an. */
+    fun discardPartialDownloads() {
+        cancelDownload()
+        viewModelScope.launch { downloader.discardPartials() }
+    }
+
+    // --------------------------------------------------- Weitere Modelle suchen
+
+    private val _onlineCatalog = MutableStateFlow<List<CatalogEntry>>(emptyList())
+    val onlineCatalog: StateFlow<List<CatalogEntry>> = _onlineCatalog.asStateFlow()
+
+    private val _catalogLoading = MutableStateFlow(false)
+    val catalogLoading: StateFlow<Boolean> = _catalogLoading.asStateFlow()
+
+    fun loadOnlineCatalog() {
+        if (_catalogLoading.value) return
+        viewModelScope.launch {
+            _catalogLoading.value = true
+            _importError.value = null
+            downloader.fetchOnlineCatalog()
+                .onSuccess { entries ->
+                    _onlineCatalog.value = entries
+                    if (entries.isEmpty()) {
+                        _importError.value =
+                            "HuggingFace meldet gerade keine weiteren lizenzfreien Modelle."
+                    }
+                }
+                .onFailure {
+                    _importError.value =
+                        it.message ?: "Die Modellliste liess sich nicht abrufen."
+                }
+            _catalogLoading.value = false
+        }
     }
 
     fun dismissTokenHint() {
