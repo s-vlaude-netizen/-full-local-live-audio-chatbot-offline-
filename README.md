@@ -23,10 +23,19 @@ Gespräch, ohne dass man den Bildschirm anfassen muss.
 [![Android](https://github.com/s-vlaude-netizen/-full-local-live-audio-chatbot-offline-/actions/workflows/android.yml/badge.svg)](https://github.com/s-vlaude-netizen/-full-local-live-audio-chatbot-offline-/actions/workflows/android.yml)
 
 Das Release [`dev-latest`][release] wird bei jedem grünen Build ersetzt und
-enthält immer den aktuellen Stand. Es ist ein Debug-Build, für die Installation
-muss „Installation aus unbekannter Quelle“ erlaubt sein. Gebaut wird nur für
-**arm64-v8a** — das trifft jedes Telefon der letzten Jahre, aber keinen
-x86-Emulator.
+enthält immer den aktuellen Stand. Für die Installation muss „Installation aus
+unbekannter Quelle“ erlaubt sein. Gebaut wird nur für **arm64-v8a** — das
+trifft jedes Telefon der letzten Jahre, aber keinen x86-Emulator.
+
+**Updates** installieren sich über den vorigen Stand, Einstellungen und
+geladenes Modell bleiben erhalten. Möglich wird das durch einen festen
+Signaturschlüssel, der im Repo liegt — was das bedeutet, steht weiter unten.
+
+> Einmalig nötig: Wer eine Version vor `0.2.x` installiert hat, muss die App
+> vorher **deinstallieren**. Die alten Builds trugen bei jedem CI-Lauf eine
+> andere Signatur, und Android lässt einen Signaturwechsel nicht zu. Das
+> geladene Modell geht dabei verloren und muss neu geladen werden — danach
+> passiert das nicht wieder.
 
 Ohne Modelldatei antwortet ein Platzhalter. Damit lässt sich die komplette
 Sprachschleife — Mikrofon, Erkennung, Vorlesen — direkt nach der Installation
@@ -139,9 +148,13 @@ und Abkürzungen gelten dabei nicht als Satzende.
 ## Selbst bauen
 
 ```bash
-./gradlew assembleDebug        # APK unter app/build/outputs/apk/debug/
+./gradlew assembleRelease      # APK unter app/build/outputs/apk/release/
 ./gradlew testDebugUnitTest    # Logik-Tests
 ```
+
+Signiert wird mit dem Schlüssel aus `keystore/`, lokal wie im CI. Die
+Versionsnummer kommt aus `VERSION_CODE`; ohne die Variable ist sie 1, ein
+lokaler Build lässt sich also nicht über einen neueren aus dem CI legen.
 
 Voraussetzung: JDK 17 und ein Android SDK mit API 36.
 
@@ -153,9 +166,27 @@ Voraussetzung: JDK 17 und ein Android SDK mit API 36.
 - **Aufwecken per Schlüsselwort.** Der Live-Modus wird per Knopf gestartet.
 - **Sehr lange Gespräche.** Ist das Kontextfenster voll, beginnt das Gespräch
   im Modell von vorn; der angezeigte Verlauf bleibt erhalten.
-- **Signierte Release-Builds.** Der CI baut bisher nur Debug.
 - **Anmeldung bei Hugging Face.** Statt eines Anmeldevorgangs im Browser wird
   ein Zugangstoken von Hand eingetragen.
+
+## Der Signaturschlüssel liegt im Repo
+
+Unter `keystore/` liegen Schlüssel und Passwort im Klartext. Das ist Absicht
+und eine bewusste Abwägung.
+
+**Warum:** Android akzeptiert ein Update nur, wenn das neue APK dieselbe
+Signatur trägt wie das installierte. Ein CI ohne festen Schlüssel signiert
+jeden Lauf mit einem neu erzeugten — jedes Update scheitert dann, man muss
+deinstallieren und verliert Einstellungen und ein halbes Gigabyte Modell.
+
+**Was das kostet:** Der Schlüssel beweist nichts über die Herkunft eines APK.
+Jeder kann eines bauen, das Geräte als dieselbe App annehmen und über eine
+bestehende Installation legen — mitsamt deren Daten. Ein Klick auf ein APK aus
+fremder Quelle ist damit gefährlicher als bei einer App aus dem Play Store.
+
+**Praktisch heißt das:** APKs nur aus dem [Release dieses Repos][release]
+installieren und vorher auf die Quelle schauen. Wer das nicht will, baut selbst
+(siehe oben) und ersetzt den Schlüssel unter `keystore/` durch einen eigenen.
 
 ## Datenschutz
 
@@ -173,4 +204,4 @@ Modelle liegen im app-eigenen Ordner, der Verlauf nur im Arbeitsspeicher und ist
 nach dem Beenden weg.
 
 [release]: https://github.com/s-vlaude-netizen/-full-local-live-audio-chatbot-offline-/releases/tag/dev-latest
-[release-apk]: https://github.com/s-vlaude-netizen/-full-local-live-audio-chatbot-offline-/releases/latest/download/lokaler-live-chat-debug.apk
+[release-apk]: https://github.com/s-vlaude-netizen/-full-local-live-audio-chatbot-offline-/releases/latest/download/lokaler-live-chat.apk

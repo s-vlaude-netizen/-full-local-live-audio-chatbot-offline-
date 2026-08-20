@@ -14,3 +14,8 @@ local.properties
 *.bin
 *.gguf
 *.litertlm
+
+# Der Signaturschluessel gehoert hier ausdruecklich dazu - siehe
+# keystore/keystore.properties und den Abschnitt im README.
+!keystore/
+!keystore/*.jks

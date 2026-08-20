@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -5,6 +6,21 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
+/**
+ * Fester Signaturschluessel aus dem Repo.
+ *
+ * Android erlaubt ein Update nur, wenn das neue APK mit demselben Schluessel
+ * signiert ist wie das installierte. Ohne festen Schluessel signiert jeder
+ * CI-Lauf mit einem frisch erzeugten Debug-Schluessel - und jedes Update
+ * scheitert. Was das fuer die Sicherheit bedeutet, steht im README.
+ */
+val signingProperties = Properties().apply {
+    rootProject.file("keystore/keystore.properties").inputStream().use { load(it) }
+}
+
+/** Der CI reicht die Laufnummer durch, damit die Version monoton steigt. */
+val buildNumber = (System.getenv("VERSION_CODE") ?: "1").toInt()
 
 android {
     namespace = "de.localvoice.livechat"
@@ -14,8 +30,8 @@ android {
         applicationId = "de.localvoice.livechat"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = buildNumber
+        versionName = "0.2.$buildNumber"
 
         ndk {
             // Die Nativbibliotheken von LiteRT-LM sind gross. Ohne Filter landen sie
@@ -26,14 +42,28 @@ android {
         }
     }
 
+    signingConfigs {
+        create("shared") {
+            storeFile = rootProject.file(signingProperties.getProperty("storeFile"))
+            storePassword = signingProperties.getProperty("storePassword")
+            keyAlias = signingProperties.getProperty("keyAlias")
+            keyPassword = signingProperties.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
+        // Beide Varianten mit demselben Schluessel: sonst laesst sich ein
+        // selbst gebauter Stand nicht ueber den aus dem CI installieren.
         debug {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("shared")
         }
         release {
-            // Debug-signiert bauen ist hier nicht das Ziel; der CI baut den Debug-APK.
+            // Ohne Verkleinern - das Ziel ist nur, dass debuggable aus ist.
+            // Ein debugfaehiges APK bremst die Inferenz auf dem Geraet spuerbar.
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("shared")
         }
     }
 
