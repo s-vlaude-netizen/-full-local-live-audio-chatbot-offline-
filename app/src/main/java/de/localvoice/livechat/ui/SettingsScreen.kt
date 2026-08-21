@@ -39,9 +39,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import de.localvoice.livechat.R
 import de.localvoice.livechat.data.LocalModel
 import kotlin.math.roundToInt
 
@@ -62,10 +64,10 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Einstellungen") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Zurueck")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
             )
@@ -79,11 +81,10 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Section(title = "Modell") {
+            Section(title = stringResource(R.string.section_model)) {
                 if (models.isEmpty()) {
                     Text(
-                        "Noch keine .litertlm-Datei gefunden. Ohne Modell antwortet nur der " +
-                            "Platzhalter - die Sprachschleife laesst sich damit aber schon testen.",
+                        stringResource(R.string.no_model_found),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 } else {
@@ -97,7 +98,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     }
                     Spacer(Modifier.height(4.dp))
                     OutlinedButton(onClick = { viewModel.selectModel(null) }) {
-                        Text("Kein Modell verwenden")
+                        Text(stringResource(R.string.use_no_model))
                     }
                 }
 
@@ -106,9 +107,9 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     Button(
                         onClick = { picker.launch(arrayOf("*/*")) },
                         enabled = importProgress == null,
-                    ) { Text("Modelldatei waehlen") }
+                    ) { Text(stringResource(R.string.choose_model_file)) }
                     OutlinedButton(onClick = { viewModel.refreshModels() }) {
-                        Text("Ordner neu einlesen")
+                        Text(stringResource(R.string.rescan_folder))
                     }
                 }
 
@@ -121,12 +122,12 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Text(
-                            "Kopiert: ${(fraction * 100).roundToInt()} %",
+                            stringResource(R.string.copied_percent, (fraction * 100).roundToInt()),
                             style = MaterialTheme.typography.labelSmall,
                         )
                     } else {
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        Text("Wird kopiert…", style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.copying), style = MaterialTheme.typography.labelSmall)
                     }
                 }
 
@@ -136,12 +137,12 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                     )
-                    OutlinedButton(onClick = { viewModel.dismissImportError() }) { Text("OK") }
+                    OutlinedButton(onClick = { viewModel.dismissImportError() }) { Text(stringResource(R.string.ok)) }
                 }
 
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Grosse Dateien lassen sich auch direkt hierher kopieren, ohne Import:",
+                    stringResource(R.string.copy_hint),
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Text(
@@ -151,7 +152,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 )
             }
 
-            Section(title = "Modell herunterladen") {
+            Section(title = stringResource(R.string.section_download)) {
                 val download by viewModel.download.collectAsStateWithLifecycle()
                 if (download != null) {
                     DownloadProgressRow(
@@ -173,27 +174,24 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { viewModel.startDownload(chosen) }) {
-                            Text("Herunterladen")
+                            Text(stringResource(R.string.download_button))
                         }
                         OutlinedButton(
                             onClick = { viewModel.loadOnlineCatalog() },
                             enabled = !catalogLoading,
                         ) {
-                            Text(if (catalogLoading) "Suche laeuft…" else "Weitere suchen")
+                            Text(stringResource(if (catalogLoading) R.string.searching else R.string.search_more))
                         }
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Der Download ist der einzige Moment, in dem die App ins Netz geht, " +
-                            "und er setzt nach einem Verbindungsabbruch von selbst fort. " +
-                            "Modelle mit Lizenzpflicht brauchen zusaetzlich ein Zugangstoken; " +
-                            "\"Weitere suchen\" listet nur solche ohne.",
+                        stringResource(R.string.download_note),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(4.dp))
                     OutlinedButton(onClick = { viewModel.discardPartialDownloads() }) {
-                        Text("Angefangene Downloads verwerfen")
+                        Text(stringResource(R.string.discard_partials))
                     }
                 }
 
@@ -203,28 +201,28 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     onValueChange = { value ->
                         viewModel.updateSettings { it.copy(huggingFaceToken = value.trim()) }
                     },
-                    label = { Text("HuggingFace-Token (nur fuer Gemma noetig)") },
+                    label = { Text(stringResource(R.string.hf_token_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
             }
 
-            Section(title = "Verhalten") {
+            Section(title = stringResource(R.string.section_behavior)) {
                 SwitchRow(
-                    title = "Freihand-Modus",
-                    subtitle = "Nach jeder Antwort automatisch weiter zuhoeren",
+                    title = stringResource(R.string.hands_free_title),
+                    subtitle = stringResource(R.string.hands_free_subtitle),
                     checked = settings.handsFree,
                     onChange = { value -> viewModel.updateSettings { it.copy(handsFree = value) } },
                 )
                 SwitchRow(
-                    title = "GPU benutzen",
-                    subtitle = "Schneller, aber nicht auf jedem Geraet stabil",
+                    title = stringResource(R.string.gpu_title),
+                    subtitle = stringResource(R.string.gpu_subtitle),
                     checked = settings.useGpu,
                     onChange = { value -> viewModel.updateSettings { it.copy(useGpu = value) } },
                 )
             }
 
-            Section(title = "Systemanweisung") {
+            Section(title = stringResource(R.string.section_system_prompt)) {
                 OutlinedTextField(
                     value = settings.systemPrompt,
                     onValueChange = { value ->
@@ -236,13 +234,13 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 )
             }
 
-            Section(title = "Sprache") {
+            Section(title = stringResource(R.string.section_language)) {
                 OutlinedTextField(
                     value = settings.sttLanguageTag,
                     onValueChange = { value ->
                         viewModel.updateSettings { it.copy(sttLanguageTag = value.trim()) }
                     },
-                    label = { Text("Spracherkennung (z. B. de-DE)") },
+                    label = { Text(stringResource(R.string.stt_language_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
@@ -252,7 +250,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     onValueChange = { value ->
                         viewModel.updateSettings { it.copy(ttsLanguageTag = value.trim()) }
                     },
-                    label = { Text("Sprachausgabe (z. B. de-DE)") },
+                    label = { Text(stringResource(R.string.tts_language_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
@@ -263,7 +261,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Button(onClick = { viewModel.testSpeech() }) { Text("Ausgabe testen") }
+                    Button(onClick = { viewModel.testSpeech() }) { Text(stringResource(R.string.test_speech_button)) }
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -272,7 +270,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 SliderRow(
-                    label = "Sprechtempo",
+                    label = stringResource(R.string.speech_rate),
                     value = settings.speechRate,
                     range = 0.5f..2.0f,
                     format = { String.format("%.2fx", it) },
@@ -280,9 +278,9 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 )
             }
 
-            Section(title = "Generierung") {
+            Section(title = stringResource(R.string.section_generation)) {
                 SliderRow(
-                    label = "Temperatur",
+                    label = stringResource(R.string.temperature),
                     value = settings.temperature,
                     range = 0.1f..1.5f,
                     format = { String.format("%.2f", it) },
@@ -291,7 +289,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     },
                 )
                 SliderRow(
-                    label = "Top-K",
+                    label = stringResource(R.string.top_k),
                     value = settings.topK.toFloat(),
                     range = 1f..80f,
                     format = { it.roundToInt().toString() },
@@ -302,8 +300,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             }
 
             Text(
-                "Aenderungen an Modell oder Generierung wirken ab dem naechsten Turn; " +
-                    "das Modell wird dann neu geladen.",
+                stringResource(R.string.settings_footer),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -347,7 +344,7 @@ private fun ModelRow(
                 )
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "Modell loeschen")
+                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete_model))
             }
         }
     }

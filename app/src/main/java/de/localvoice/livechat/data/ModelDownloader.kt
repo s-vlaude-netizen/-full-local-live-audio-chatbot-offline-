@@ -1,6 +1,8 @@
 package de.localvoice.livechat.data
 
+import android.content.Context
 import android.util.Log
+import de.localvoice.livechat.R
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -52,7 +54,11 @@ class DownloadException(val error: DownloadError, message: String) : IOException
  * selbst weitergemacht, und zwar an der Stelle, an der es aufgehoert hat. Ein
  * halbes Gigabyte noch einmal von vorn zu laden waere sonst die Regel.
  */
-class ModelDownloader(private val models: ModelRepository) {
+class ModelDownloader(
+    private val context: Context,
+    private val models: ModelRepository,
+    private val catalog: ModelCatalog,
+) {
 
     /**
      * @param token HuggingFace-Zugangstoken; fuer Gemma zwingend, sonst optional.
@@ -80,7 +86,7 @@ class ModelDownloader(private val models: ModelRepository) {
                 }
             }
 
-            check(partial.renameTo(target)) { "Die geladene Datei liess sich nicht ablegen." }
+            check(partial.renameTo(target)) { context.getString(R.string.dl_place_failed) }
             target
         }
     }
@@ -146,7 +152,7 @@ class ModelDownloader(private val models: ModelRepository) {
         val body = readText("https://huggingface.co/api/models/${entry.repoId}", token, entry)
         val siblings = JSONObject(body).optJSONArray("siblings")
             ?: throw DownloadException(
-                DownloadError.Message("Die Ablage ${entry.repoId} liefert kein Dateiverzeichnis."),
+                DownloadError.Message(context.getString(R.string.dl_no_file_listing, entry.repoId)),
                 "keine siblings",
             )
         val names = buildList {
@@ -156,10 +162,7 @@ class ModelDownloader(private val models: ModelRepository) {
             }
         }
         return ModelFileChooser.pick(names) ?: throw DownloadException(
-            DownloadError.Message(
-                "In ${entry.repoId} liegt keine .litertlm-Datei - dieses Modell laesst " +
-                    "sich hier nicht verwenden.",
-            ),
+            DownloadError.Message(context.getString(R.string.dl_no_litertlm, entry.repoId)),
             "keine passende Datei",
         )
     }
@@ -176,10 +179,10 @@ class ModelDownloader(private val models: ModelRepository) {
             val body = readText(
                 "https://huggingface.co/api/models?filter=litert-lm&sort=downloads&limit=60",
                 token = null,
-                entry = ModelCatalog.DEFAULT,
+                entry = catalog.default,
             )
             val array = JSONArray(body)
-            val known = ModelCatalog.ENTRIES.map { it.repoId }.toSet()
+            val known = catalog.entries.map { it.repoId }.toSet()
             buildList {
                 for (i in 0 until array.length()) {
                     val model = array.optJSONObject(i) ?: continue
@@ -192,8 +195,8 @@ class ModelDownloader(private val models: ModelRepository) {
                         CatalogEntry(
                             repoId = id,
                             title = id.substringAfter('/'),
-                            sizeLabel = "Groesse unbekannt",
-                            note = "Von HuggingFace gefunden, ohne Lizenzzustimmung ladbar.",
+                            sizeLabel = context.getString(R.string.model_size_unknown),
+                            note = context.getString(R.string.model_found_online),
                             gated = false,
                         ),
                     )
@@ -246,7 +249,7 @@ class ModelDownloader(private val models: ModelRepository) {
 
         if (total > 0 && partial.length() < total) {
             throw DownloadException(
-                DownloadError.Message("Die Verbindung brach mitten im Download ab.", retryable = true),
+                DownloadError.Message(context.getString(R.string.dl_incomplete), retryable = true),
                 "unvollstaendig: ${partial.length()} von $total",
             )
         }
@@ -294,7 +297,7 @@ class ModelDownloader(private val models: ModelRepository) {
                     connection.disconnect()
                     if (location.isNullOrBlank()) {
                         throw DownloadException(
-                            DownloadError.Message("Der Server leitete ins Leere weiter."),
+                            DownloadError.Message(context.getString(R.string.dl_empty_redirect)),
                             "leere Weiterleitung",
                         )
                     }
@@ -316,7 +319,7 @@ class ModelDownloader(private val models: ModelRepository) {
                     // 5xx und Ueberlastung gehen vorbei, 404 nicht.
                     throw DownloadException(
                         DownloadError.Message(
-                            "Der Server antwortete mit HTTP $code.",
+                            context.getString(R.string.dl_http, code),
                             retryable = code >= 500 || code == 429,
                         ),
                         "HTTP $code",
@@ -325,7 +328,7 @@ class ModelDownloader(private val models: ModelRepository) {
             }
         }
         throw DownloadException(
-            DownloadError.Message("Zu viele Weiterleitungen."),
+            DownloadError.Message(context.getString(R.string.dl_too_many_redirects)),
             "redirect loop",
         )
     }

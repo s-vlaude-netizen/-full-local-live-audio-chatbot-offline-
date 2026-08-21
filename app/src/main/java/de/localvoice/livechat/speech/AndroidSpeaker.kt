@@ -9,8 +9,9 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
 import android.util.Log
+import de.localvoice.livechat.R
+import java.util.Collections
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.resume
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,12 +24,18 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 /**
  * Sprachausgabe ueber die Android-TTS-Engine.
  *
- * Fuer den Offline-Betrieb wird eine Stimme gesucht, die keine Netzverbindung
- * braucht. Entscheidend ist dabei die Pruefung auf
- * [TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED]: Android fuehrt Stimmen auch
- * dann in [TextToSpeech.getVoices] auf, wenn ihre Sprachdaten gar nicht auf dem
- * Geraet liegen. Setzt man so eine Stimme, meldet speak() brav Erfolg - und zu
- * hoeren ist nichts.
+ * Zwei Fallstricke bestimmen den Aufbau:
+ *
+ * Erstens fuehrt Android Stimmen auch dann in [TextToSpeech.getVoices] auf,
+ * wenn ihre Sprachdaten gar nicht auf dem Geraet liegen. Setzt man so eine
+ * Stimme, meldet speak() brav Erfolg - und zu hoeren ist nichts. Deshalb die
+ * Pruefung auf [TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED].
+ *
+ * Zweitens kommen die Rueckmeldungen abgebrochener Aeusserungen verspaetet.
+ * Ein blosser Zaehler wuerde von ihnen faelschlich heruntergezaehlt und die
+ * gerade laufende Ausgabe fuer beendet erklaeren. Deshalb werden die
+ * Aeusserungen einzeln ueber ihre Kennung verfolgt: eine Rueckmeldung, deren
+ * Kennung nicht mehr aussteht, laeuft ins Leere.
  */
 class AndroidSpeaker(
     private val context: Context,
@@ -39,14 +46,15 @@ class AndroidSpeaker(
 
     private var tts: TextToSpeech? = null
 
-    private val pending = AtomicInteger(0)
+    /** Kennungen der Aeusserungen, die noch aussteht. */
+    private val outstanding: MutableSet<String> = Collections.synchronizedSet(LinkedHashSet())
     private val pendingFlow = MutableStateFlow(0)
     private val utteranceCounter = AtomicLong(0)
 
     private val _warning = MutableStateFlow<String?>(null)
     override val warning: StateFlow<String?> = _warning.asStateFlow()
 
-    private val _diagnostics = MutableStateFlow("Sprachausgabe noch nicht gestartet")
+    private val _diagnostics = MutableStateFlow(context.getString(R.string.tts_not_started))
     override val diagnostics: StateFlow<String> = _diagnostics.asStateFlow()
 
     private val _busy = MutableStateFlow(false)
@@ -71,8 +79,8 @@ class AndroidSpeaker(
         }
         val engine = holder[0]?.takeIf { status == TextToSpeech.SUCCESS } ?: run {
             runCatching { holder[0]?.shutdown() }
-            _warning.value = "Auf diesem Geraet ist keine Sprachausgabe eingerichtet."
-            _diagnostics.value = "Keine TTS-Engine gefunden"
+            _warning.value = context.getString(R.string.tts_no_engine)
+            _diagnostics.value = context.getString(R.string.tts_no_engine_short)
             return false
         }
 
@@ -84,52 +92,61 @@ class AndroidSpeaker(
         val voice = selectUsableVoice(engine)
         if (voice != null) runCatching { engine.setVoice(voice) }
 
-        _diagnostics.value = buildString {
-            append("Engine: ").append(engine.defaultEngine ?: "unbekannt")
-            append(" | Stimme: ").append(voice?.name ?: "Vorgabe der Engine")
-            append(" | Sprache: ").append(locale.toLanguageTag())
-        }
+        _diagnostics.value = context.getString(
+            R.string.tts_diagnostics,
+            engine.defaultEngine ?: context.getString(R.string.unknown),
+            voice?.name ?: context.getString(R.string.tts_engine_default_voice),
+            locale.toLanguageTag(),
+        )
 
         _warning.value = when {
             voice != null -> null
-            languageMissing -> "Fuer ${locale.displayLanguage} fehlen die Sprachdaten der " +
-                "Sprachausgabe. In den Systemeinstellungen unter Text-in-Sprache installieren."
-            else -> "Fuer ${locale.displayLanguage} ist keine offline nutzbare Stimme " +
-                "installiert. Ohne sie bleibt die App stumm."
+            languageMissing -> context.getString(R.string.tts_language_missing, locale.displayLanguage)
+            else -> context.getString(R.string.tts_no_offline_voice, locale.displayLanguage)
         }
 
         engine.setSpeechRate(speechRate)
         engine.setPitch(pitch)
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
-                _busy.value = true
+                if (utteranceId != null && utteranceId in outstanding) _busy.value = true
             }
 
-            override fun onDone(utteranceId: String?) = release()
+            override fun onDone(utteranceId: String?) = release(utteranceId)
 
             @Deprecated("Von der Plattform ersetzt, muss aber ueberschrieben werden.")
-            override fun onError(utteranceId: String?) = release()
+            override fun onError(utteranceId: String?) = release(utteranceId)
 
             override fun onError(utteranceId: String?, errorCode: Int) {
                 Log.w(TAG, "Sprachausgabe meldet Fehler $errorCode")
-                _warning.value = "Die Sprachausgabe brach mit Fehler $errorCode ab."
-                release()
-            }
-
-            override fun onStop(utteranceId: String?, interrupted: Boolean) = release()
-
-            private fun release() {
-                val left = pending.updateAndGet { if (it > 0) it - 1 else 0 }
-                pendingFlow.value = left
-                if (left == 0) {
-                    _busy.value = false
-                    abandonFocus()
+                if (utteranceId != null && utteranceId in outstanding) {
+                    _warning.value = context.getString(R.string.tts_failed, errorCode)
                 }
+                release(utteranceId)
             }
+
+            override fun onStop(utteranceId: String?, interrupted: Boolean) = release(utteranceId)
         })
 
         tts = engine
         return true
+    }
+
+    /**
+     * Streicht eine Aeusserung von der Liste.
+     *
+     * Kennungen, die nicht mehr aufgefuehrt sind, stammen von abgebrochenen
+     * Aeusserungen und werden ignoriert - sonst wuerde ihre verspaetete
+     * Rueckmeldung die gerade laufende Ausgabe fuer beendet erklaeren.
+     */
+    private fun release(utteranceId: String?) {
+        if (utteranceId == null || !outstanding.remove(utteranceId)) return
+        val left = outstanding.size
+        pendingFlow.value = left
+        if (left == 0) {
+            _busy.value = false
+            abandonFocus()
+        }
     }
 
     /**
@@ -151,28 +168,25 @@ class AndroidSpeaker(
 
     private fun speak(text: String, queueMode: Int) {
         val engine = tts ?: run {
-            _warning.value = "Die Sprachausgabe war nicht bereit, der Satz ging verloren."
+            _warning.value = context.getString(R.string.tts_not_ready)
             return
         }
         val clean = text.trim()
         if (clean.isEmpty()) return
         if (queueMode == TextToSpeech.QUEUE_FLUSH) {
-            pending.set(0)
+            outstanding.clear()
             pendingFlow.value = 0
         }
         val id = "utt-" + utteranceCounter.incrementAndGet()
-        pendingFlow.value = pending.incrementAndGet()
+        outstanding.add(id)
+        pendingFlow.value = outstanding.size
         _busy.value = true
         requestFocus()
         val status = engine.speak(clean, queueMode, Bundle(), id)
         if (status != TextToSpeech.SUCCESS) {
             Log.w(TAG, "speak() abgelehnt: $status")
-            _warning.value = "Die Sprachausgabe nahm den Satz nicht an (Code $status)."
-            pendingFlow.value = pending.updateAndGet { if (it > 0) it - 1 else 0 }
-            if (pending.get() == 0) {
-                _busy.value = false
-                abandonFocus()
-            }
+            _warning.value = context.getString(R.string.tts_rejected, status)
+            release(id)
         }
     }
 
@@ -200,10 +214,12 @@ class AndroidSpeaker(
     }
 
     override fun stop() {
-        runCatching { tts?.stop() }
-        pending.set(0)
+        // Erst die Liste leeren, dann anhalten: die Rueckmeldungen der
+        // abgebrochenen Aeusserungen laufen danach ins Leere.
+        outstanding.clear()
         pendingFlow.value = 0
         _busy.value = false
+        runCatching { tts?.stop() }
         abandonFocus()
     }
 

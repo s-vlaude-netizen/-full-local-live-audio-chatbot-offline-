@@ -8,13 +8,13 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import de.localvoice.livechat.LiveChatApplication
+import de.localvoice.livechat.R
 import de.localvoice.livechat.data.AppSettings
 import de.localvoice.livechat.data.CatalogEntry
 import de.localvoice.livechat.data.DownloadError
 import de.localvoice.livechat.data.DownloadException
 import de.localvoice.livechat.data.DownloadProgress
 import de.localvoice.livechat.data.LocalModel
-import de.localvoice.livechat.data.ModelCatalog
 import de.localvoice.livechat.data.ModelDownloader
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +30,7 @@ data class ImportProgress(val copiedBytes: Long, val totalBytes: Long) {
 
 class MainViewModel(application: Application) : ViewModel() {
 
+    private val app = application
     private val container = (application as LiveChatApplication).container
 
     val session = container.liveSession
@@ -44,7 +45,7 @@ class MainViewModel(application: Application) : ViewModel() {
     private val _importError = MutableStateFlow<String?>(null)
     val importError: StateFlow<String?> = _importError.asStateFlow()
 
-    private val downloader = ModelDownloader(container.models)
+    private val downloader = container.downloader
 
     private val _download = MutableStateFlow<DownloadProgress?>(null)
     val download: StateFlow<DownloadProgress?> = _download.asStateFlow()
@@ -55,7 +56,7 @@ class MainViewModel(application: Application) : ViewModel() {
 
     private var downloadJob: Job? = null
 
-    val catalog: List<CatalogEntry> = ModelCatalog.ENTRIES
+    val catalog: List<CatalogEntry> = container.catalog.entries
 
     val modelsDirPath: String get() = container.models.modelsDir.absolutePath
 
@@ -91,7 +92,7 @@ class MainViewModel(application: Application) : ViewModel() {
                     refreshModels()
                     selectModel(file.name)
                 }
-                .onFailure { _importError.value = it.message ?: "Import fehlgeschlagen." }
+                .onFailure { _importError.value = it.message ?: app.getString(R.string.import_failed) }
         }
     }
 
@@ -130,7 +131,7 @@ class MainViewModel(application: Application) : ViewModel() {
                         is DownloadError.NeedsToken -> _tokenNeededFor.value = error.entry
                         is DownloadError.Message -> _importError.value = error.text
                         null -> _importError.value =
-                            failure.message ?: "Der Download ist fehlgeschlagen."
+                            failure.message ?: app.getString(R.string.dl_failed_generic)
                     }
                 }
         }
@@ -169,13 +170,12 @@ class MainViewModel(application: Application) : ViewModel() {
                 .onSuccess { entries ->
                     _onlineCatalog.value = entries
                     if (entries.isEmpty()) {
-                        _importError.value =
-                            "HuggingFace meldet gerade keine weiteren lizenzfreien Modelle."
+                        _importError.value = app.getString(R.string.dl_no_more_models)
                     }
                 }
                 .onFailure {
                     _importError.value =
-                        it.message ?: "Die Modellliste liess sich nicht abrufen."
+                        it.message ?: app.getString(R.string.dl_list_failed)
                 }
             _catalogLoading.value = false
         }

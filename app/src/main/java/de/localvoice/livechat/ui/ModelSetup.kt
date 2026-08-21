@@ -23,6 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import de.localvoice.livechat.R
 import androidx.compose.ui.unit.dp
 import de.localvoice.livechat.data.CatalogEntry
 import de.localvoice.livechat.data.DownloadProgress
@@ -45,12 +47,11 @@ fun ModelDownloadDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Sprachmodell laden?") },
+        title = { Text(stringResource(R.string.dialog_download_title)) },
         text = {
             Column {
                 Text(
-                    "Es liegt noch kein Sprachmodell auf dem Geraet. Ohne eines " +
-                        "antwortet nur ein Platzhalter.",
+                    stringResource(R.string.dialog_download_body),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(12.dp))
@@ -63,18 +64,17 @@ fun ModelDownloadDialog(
                 }
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Der Download ist einmalig und braucht Netz. Danach laeuft alles " +
-                        "offline. Am besten im WLAN.",
+                    stringResource(R.string.dialog_download_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onDownload(selected) }) { Text("Herunterladen") }
+            TextButton(onClick = { onDownload(selected) }) { Text(stringResource(R.string.download_button)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Spaeter") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.later)) }
         },
     )
 }
@@ -97,7 +97,9 @@ fun CatalogRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(entry.title, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    entry.sizeLabel + if (entry.gated) " · Lizenz noetig" else " · frei",
+                    entry.sizeLabel + " · " + stringResource(
+                        if (entry.gated) R.string.licence_needed else R.string.licence_free,
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -129,23 +131,34 @@ fun DownloadProgressRow(progress: DownloadProgress, onCancel: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     if (progress.waitingForRetry) {
-                        "Verbindung weg - neuer Versuch laeuft gleich"
+                        stringResource(R.string.download_retry_waiting)
                     } else {
-                        progress.entry.title + " wird geladen"
+                        stringResource(R.string.download_loading, progress.entry.title)
                     },
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Text(
                     buildString {
-                        append(megabytes(progress.copiedBytes))
                         if (progress.totalBytes > 0) {
-                            append(" von ").append(megabytes(progress.totalBytes))
-                            append(" (").append((fraction ?: 0f).times(100).roundToInt())
-                            append(" %)")
+                            append(
+                                stringResource(
+                                    R.string.download_of,
+                                    megabytes(progress.copiedBytes),
+                                    megabytes(progress.totalBytes),
+                                    (fraction ?: 0f).times(100).roundToInt(),
+                                ),
+                            )
+                        } else {
+                            append(megabytes(progress.copiedBytes))
                         }
                         if (progress.attempt > 1) {
-                            append("  ·  Versuch ").append(progress.attempt)
-                            append(" von ").append(DownloadRetryPolicy.MAX_ATTEMPTS)
+                            append(
+                                stringResource(
+                                    R.string.download_attempt,
+                                    progress.attempt,
+                                    DownloadRetryPolicy.MAX_ATTEMPTS,
+                                ),
+                            )
                         }
                     },
                     style = MaterialTheme.typography.labelSmall,
@@ -156,13 +169,14 @@ fun DownloadProgressRow(progress: DownloadProgress, onCancel: () -> Unit) {
                     },
                 )
             }
-            OutlinedButton(onClick = onCancel) { Text("Anhalten") }
+            OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.download_pause)) }
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            "Faellt die Verbindung weg, geht es nach " +
-                "${DownloadRetryPolicy.WAIT_MILLIS / 1000} Sekunden von selbst weiter - " +
-                "an derselben Stelle. Auch Anhalten ist kein Verlust.",
+            stringResource(
+                R.string.download_retry_hint,
+                (DownloadRetryPolicy.WAIT_MILLIS / 1000).toInt(),
+            ),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -185,29 +199,25 @@ fun TokenNeededDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Zugang fehlt") },
+        title = { Text(stringResource(R.string.token_dialog_title)) },
         text = {
             Column {
                 Text(
-                    "${entry.title} gibt HuggingFace erst heraus, wenn du der Lizenz " +
-                        "zugestimmt hast und ein Zugangstoken hinterlegt ist.",
+                    stringResource(R.string.token_dialog_body, entry.title),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "1. Modellseite oeffnen und der Lizenz zustimmen.\n" +
-                        "2. Auf huggingface.co unter Settings ein Access Token mit " +
-                        "Leserecht anlegen.\n" +
-                        "3. Das Token unten in den Einstellungen eintragen.",
+                    stringResource(R.string.token_dialog_steps),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
         },
         confirmButton = {
             TextButton(onClick = { onOpenLicense(entry.licenseUrl) }) {
-                Text("Modellseite oeffnen")
+                Text(stringResource(R.string.open_model_page))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Schliessen") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
     )
 }

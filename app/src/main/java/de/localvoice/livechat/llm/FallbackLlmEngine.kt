@@ -1,5 +1,8 @@
 package de.localvoice.livechat.llm
 
+import android.content.Context
+import de.localvoice.livechat.R
+
 import de.localvoice.livechat.domain.ChatMessage
 import de.localvoice.livechat.domain.Role
 import java.text.SimpleDateFormat
@@ -16,9 +19,9 @@ import kotlinx.coroutines.flow.flow
  * Sprachausgabe - schon nach der Installation testen, ohne 500 MB Modell.
  * Der Motor sagt selbst deutlich, dass er kein echtes Sprachmodell ist.
  */
-class FallbackLlmEngine : LlmEngine {
+class FallbackLlmEngine(private val context: Context) : LlmEngine {
 
-    override val displayName: String = "Kein Modell geladen (Testmodus)"
+    override val displayName: String = context.getString(R.string.engine_fallback_name)
 
     override fun generate(history: List<ChatMessage>): Flow<String> = flow {
         val question = history.lastOrNull { it.role == Role.USER }?.text.orEmpty().trim()
@@ -36,25 +39,25 @@ class FallbackLlmEngine : LlmEngine {
     override fun close() = Unit
 
     private fun reply(question: String): String {
-        val q = question.lowercase(Locale.GERMAN)
+        val q = question.lowercase(Locale.getDefault())
         return when {
-            question.isEmpty() ->
-                "Ich habe nichts verstanden. Sag es gern noch einmal."
+            question.isEmpty() -> context.getString(R.string.fallback_nothing_understood)
 
-            q.contains("uhr") || q.contains("zeit") ->
-                "Es ist " + SimpleDateFormat("HH:mm", Locale.GERMAN).format(Date()) + " Uhr. " +
-                    "Mehr kann ich ohne geladenes Modell nicht."
+            q.contains("uhr") || q.contains("zeit") || q.contains("time") ->
+                context.getString(
+                    R.string.fallback_time,
+                    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()),
+                )
 
-            q.contains("datum") || q.contains("welcher tag") ->
-                "Heute ist der " + SimpleDateFormat("d. MMMM yyyy", Locale.GERMAN).format(Date()) + "."
+            q.contains("datum") || q.contains("welcher tag") || q.contains("date") ->
+                context.getString(
+                    R.string.fallback_date,
+                    SimpleDateFormat("d. MMMM yyyy", Locale.getDefault()).format(Date()),
+                )
 
-            q.contains("test") ->
-                "Test angekommen. Mikrofon, Erkennung und Sprachausgabe funktionieren. " +
-                    "Fuer echte Antworten fehlt noch die Modelldatei."
+            q.contains("test") -> context.getString(R.string.fallback_test)
 
-            else ->
-                "Ich habe verstanden: $question. Ich bin aber nur der Platzhalter. " +
-                    "Lade in den Einstellungen eine Modelldatei, dann antworte ich richtig."
+            else -> context.getString(R.string.fallback_generic, question)
         }
     }
 }

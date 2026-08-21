@@ -1,7 +1,9 @@
 package de.localvoice.livechat.data
 
 import android.content.Context
+import de.localvoice.livechat.R
 import de.localvoice.livechat.llm.LlmConfig
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,9 +15,9 @@ data class AppSettings(
     val temperature: Float = 0.8f,
     val topK: Int = 40,
     val topP: Float = 0.95f,
-    val systemPrompt: String = LlmConfig.DEFAULT_SYSTEM_PROMPT,
-    val sttLanguageTag: String = "de-DE",
-    val ttsLanguageTag: String = "de-DE",
+    val systemPrompt: String = "",
+    val sttLanguageTag: String = "",
+    val ttsLanguageTag: String = "",
     val speechRate: Float = 1.0f,
     val pitch: Float = 1.0f,
     /** Nach der Antwort automatisch wieder zuhoeren - das eigentliche Freihand-Verhalten. */
@@ -44,6 +46,16 @@ class SettingsStore(context: Context) {
 
     private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
+    /**
+     * Vorgaben, die von der Sprache des Geraets abhaengen.
+     *
+     * Fest verdrahtetes "de-DE" waere fuer alle anderen unbrauchbar - und die
+     * Systemanweisung an das Modell muss ohnehin in der Sprache stehen, in der
+     * geantwortet werden soll.
+     */
+    private val deviceLanguageTag: String = Locale.getDefault().toLanguageTag()
+    private val defaultSystemPrompt: String = context.getString(R.string.default_system_prompt)
+
     private val _settings = MutableStateFlow(read())
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
 
@@ -63,12 +75,12 @@ class SettingsStore(context: Context) {
             temperature = prefs.getFloat(KEY_TEMPERATURE, defaults.temperature),
             topK = prefs.getInt(KEY_TOP_K, defaults.topK),
             topP = prefs.getFloat(KEY_TOP_P, defaults.topP),
-            systemPrompt = prefs.getString(KEY_SYSTEM_PROMPT, defaults.systemPrompt)
-                ?: defaults.systemPrompt,
-            sttLanguageTag = prefs.getString(KEY_STT_LANG, defaults.sttLanguageTag)
-                ?: defaults.sttLanguageTag,
-            ttsLanguageTag = prefs.getString(KEY_TTS_LANG, defaults.ttsLanguageTag)
-                ?: defaults.ttsLanguageTag,
+            systemPrompt = prefs.getString(KEY_SYSTEM_PROMPT, null)
+                ?.takeIf { it.isNotBlank() } ?: defaultSystemPrompt,
+            sttLanguageTag = prefs.getString(KEY_STT_LANG, null)
+                ?.takeIf { it.isNotBlank() } ?: deviceLanguageTag,
+            ttsLanguageTag = prefs.getString(KEY_TTS_LANG, null)
+                ?.takeIf { it.isNotBlank() } ?: deviceLanguageTag,
             speechRate = prefs.getFloat(KEY_SPEECH_RATE, defaults.speechRate),
             pitch = prefs.getFloat(KEY_PITCH, defaults.pitch),
             handsFree = prefs.getBoolean(KEY_HANDS_FREE, defaults.handsFree),

@@ -53,6 +53,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
+import de.localvoice.livechat.R
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.localvoice.livechat.domain.ChatMessage
@@ -90,7 +92,7 @@ fun LiveScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Lokaler Live-Chat", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
                         Text(
                             engineLabel,
                             style = MaterialTheme.typography.labelSmall,
@@ -100,10 +102,10 @@ fun LiveScreen(
                 },
                 actions = {
                     IconButton(onClick = { session.clearConversation() }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Verlauf leeren")
+                        Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.clear_history))
                     }
                     IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Einstellungen")
+                        Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.open_settings))
                     }
                 },
             )
@@ -155,7 +157,7 @@ fun LiveScreen(
                         value = draft,
                         onValueChange = { draft = it },
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("Tippen statt sprechen") },
+                        placeholder = { Text(stringResource(R.string.type_instead)) },
                         maxLines = 4,
                     )
                     Spacer(Modifier.width(8.dp))
@@ -166,7 +168,7 @@ fun LiveScreen(
                         },
                         enabled = draft.isNotBlank(),
                     ) {
-                        Icon(Icons.Filled.Send, contentDescription = "Senden")
+                        Icon(Icons.Filled.Send, contentDescription = stringResource(R.string.send))
                     }
                 }
             }
@@ -269,7 +271,7 @@ private fun ControlBar(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             IconButton(onClick = onToggleKeyboard) {
-                Icon(Icons.Filled.Keyboard, contentDescription = "Tastatur")
+                Icon(Icons.Filled.Keyboard, contentDescription = stringResource(R.string.keyboard))
             }
             Button(
                 onClick = onToggleLive,
@@ -283,13 +285,13 @@ private fun ControlBar(
                     contentDescription = null,
                 )
                 Spacer(Modifier.width(8.dp))
-                Text(if (running) "Live-Modus beenden" else "Live-Modus starten")
+                Text(stringResource(if (running) R.string.stop_live else R.string.start_live))
             }
             IconButton(
                 onClick = onInterrupt,
                 enabled = state == LiveState.SPEAKING || state == LiveState.THINKING,
             ) {
-                Icon(Icons.Filled.Stop, contentDescription = "Antwort abbrechen")
+                Icon(Icons.Filled.Stop, contentDescription = stringResource(R.string.interrupt_answer))
             }
         }
     }
@@ -319,7 +321,7 @@ private fun MessageBubble(message: ChatMessage) {
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
-                    text = if (fromUser) "Du" else "Assistent",
+                    text = stringResource(if (fromUser) R.string.speaker_you else R.string.speaker_assistant),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -342,14 +344,12 @@ private fun EmptyHint() {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            "Noch nichts gesagt.",
+            stringResource(R.string.empty_title),
             style = MaterialTheme.typography.titleSmall,
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            "Starte den Live-Modus, leg das Telefon weg und sprich einfach los. " +
-                "Nach jeder Antwort hoert die App von selbst wieder zu. " +
-                "„Stopp“ beendet das Gespraech ohne Tastendruck.",
+            stringResource(R.string.empty_body),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -373,15 +373,18 @@ private fun ErrorBanner(text: String, onDismiss: () -> Unit) {
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = onDismiss) { Text("OK") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) }
         }
     }
 }
 
-private fun stateLabel(state: LiveState): String = when (state) {
-    LiveState.IDLE -> "Bereit"
-    LiveState.PREPARING -> "Wird vorbereitet"
-    LiveState.LISTENING -> "Ich hoere zu"
-    LiveState.THINKING -> "Ich denke nach"
-    LiveState.SPEAKING -> "Ich spreche"
-}
+@Composable
+private fun stateLabel(state: LiveState): String = stringResource(
+    when (state) {
+        LiveState.IDLE -> R.string.state_idle
+        LiveState.PREPARING -> R.string.state_preparing
+        LiveState.LISTENING -> R.string.state_listening
+        LiveState.THINKING -> R.string.state_thinking
+        LiveState.SPEAKING -> R.string.state_speaking
+    },
+)

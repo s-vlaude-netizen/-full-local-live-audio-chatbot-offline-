@@ -7,7 +7,15 @@ import org.junit.Test
 
 class DownloadRetryPolicyTest {
 
-    private val entry = ModelCatalog.DEFAULT
+    // Der Katalog braucht inzwischen einen Context; fuer die Regel genuegt
+    // ein beliebiger Eintrag.
+    private val entry = CatalogEntry(
+        repoId = "beispiel/modell",
+        title = "Beispiel",
+        sizeLabel = "1 GB",
+        note = "",
+        gated = true,
+    )
 
     @Test
     fun `fehlende Lizenz wird nicht wiederholt`() {

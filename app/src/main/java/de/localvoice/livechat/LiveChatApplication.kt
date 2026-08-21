@@ -1,6 +1,8 @@
 package de.localvoice.livechat
 
 import android.app.Application
+import de.localvoice.livechat.data.ModelCatalog
+import de.localvoice.livechat.data.ModelDownloader
 import de.localvoice.livechat.data.ModelRepository
 import de.localvoice.livechat.data.SettingsStore
 import de.localvoice.livechat.session.LiveSessionController
@@ -18,6 +20,8 @@ class AppContainer(application: Application) {
     val applicationScope = CoroutineScope(SupervisorJob())
     val settings = SettingsStore(application)
     val models = ModelRepository(application)
+    val catalog = ModelCatalog(application)
+    val downloader = ModelDownloader(application, models, catalog)
     val liveSession = LiveSessionController(
         context = application,
         settingsStore = settings,

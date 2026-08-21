@@ -9,16 +9,9 @@ data class LlmConfig(
     val topP: Float = 0.95f,
     val temperature: Float = 0.8f,
     val useGpu: Boolean = false,
-    val systemPrompt: String = DEFAULT_SYSTEM_PROMPT,
-) {
-    companion object {
-        const val DEFAULT_SYSTEM_PROMPT: String =
-            "Du bist ein gesprochener Assistent und laeufst vollstaendig offline auf dem Telefon. " +
-                "Antworte kurz, in ganzen Saetzen und in der Sprache des Nutzers. " +
-                "Zwei bis drei Saetze reichen fast immer. " +
-                "Keine Aufzaehlungszeichen, keine Ueberschriften, kein Markdown - alles wird vorgelesen."
-    }
-}
+    /** Kommt aus den Einstellungen; dort wird sie mit der Vorgabe der Sprache belegt. */
+    val systemPrompt: String = "",
+)
 
 /**
  * Ein lokales Sprachmodell.

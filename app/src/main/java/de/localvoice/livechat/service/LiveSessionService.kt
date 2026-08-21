@@ -49,7 +49,7 @@ class LiveSessionService : Service() {
             return START_NOT_STICKY
         }
 
-        startInForeground(getString(R.string.app_name), "Wird gestartet")
+        startInForeground(getString(R.string.app_name), getString(R.string.state_preparing))
 
         if (watcher == null) {
             watcher = scope.launch {
@@ -81,13 +81,15 @@ class LiveSessionService : Service() {
 
     private fun controller() = (application as LiveChatApplication).container.liveSession
 
-    private fun label(state: LiveState): String = when (state) {
-        LiveState.IDLE -> "Bereit"
-        LiveState.PREPARING -> "Wird vorbereitet"
-        LiveState.LISTENING -> "Hoert zu"
-        LiveState.THINKING -> "Denkt nach"
-        LiveState.SPEAKING -> "Liest vor"
-    }
+    private fun label(state: LiveState): String = getString(
+        when (state) {
+            LiveState.IDLE -> R.string.state_idle
+            LiveState.PREPARING -> R.string.state_preparing
+            LiveState.LISTENING -> R.string.state_listening
+            LiveState.THINKING -> R.string.state_thinking
+            LiveState.SPEAKING -> R.string.state_speaking
+        },
+    )
 
     private fun startInForeground(title: String, text: String) {
         val notification = buildNotification(title, text)
@@ -129,7 +131,7 @@ class LiveSessionService : Service() {
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setContentIntent(open)
-            .addAction(android.R.drawable.ic_media_pause, "Beenden", stop)
+            .addAction(android.R.drawable.ic_media_pause, getString(R.string.notification_stop), stop)
             .build()
     }
 

@@ -122,6 +122,16 @@ adb push modell.litertlm \
 Danach in den Einstellungen *Ordner neu einlesen* und das Modell auswählen. Der
 exakte Pfad steht dort ebenfalls.
 
+## Sprachen
+
+Die Oberfläche liegt auf **Englisch** (Vorgabe) und **Deutsch** vor; Android
+wählt anhand der Systemsprache. Weitere Sprachen brauchen nur eine neue
+`res/values-xx/strings.xml` — Code muss dafür nicht angefasst werden.
+
+Erkennung, Sprachausgabe und die Systemanweisung an das Modell richten sich
+beim ersten Start ebenfalls nach der Systemsprache; alle drei lassen sich in
+den Einstellungen einzeln ändern.
+
 ## Bedienung
 
 - **Live-Modus starten** — großer Knopf unten. Danach kann der Bildschirm aus.

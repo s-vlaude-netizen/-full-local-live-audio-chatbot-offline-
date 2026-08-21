@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.core.content.ContextCompat
+import de.localvoice.livechat.R
 import de.localvoice.livechat.data.AppSettings
 import de.localvoice.livechat.data.ModelRepository
 import de.localvoice.livechat.data.SettingsStore
@@ -82,7 +83,7 @@ class LiveSessionController(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private val _engineLabel = MutableStateFlow("Kein Modell geladen")
+    private val _engineLabel = MutableStateFlow(context.getString(R.string.engine_no_model))
     val engineLabel: StateFlow<String> = _engineLabel.asStateFlow()
 
     private val _partial = MutableStateFlow("")
@@ -91,7 +92,7 @@ class LiveSessionController(
     private val _level = MutableStateFlow(0f)
     val level: StateFlow<Float> = _level.asStateFlow()
 
-    private val _speechDiagnostics = MutableStateFlow("Sprachausgabe noch nicht gestartet")
+    private val _speechDiagnostics = MutableStateFlow(context.getString(R.string.tts_not_started))
     val speechDiagnostics: StateFlow<String> = _speechDiagnostics.asStateFlow()
 
     private var stt: SpeechToText? = null
@@ -118,7 +119,7 @@ class LiveSessionController(
     fun start() {
         if (isRunning) return
         if (!hasMicrophonePermission()) {
-            _error.value = "Ohne Mikrofon-Berechtigung geht es nicht."
+            _error.value = context.getString(R.string.error_no_mic_permission)
             return
         }
         _error.value = null
@@ -206,14 +207,14 @@ class LiveSessionController(
                 }
 
                 _state.value = LiveState.LISTENING
-                _statusDetail.value = "Ich hoere zu"
+                _statusDetail.value = context.getString(R.string.status_listening)
                 val recognizer = stt ?: break
                 when (val result = recognizer.listenOnce()) {
                     is SttResult.Text -> {
                         silentRounds = 0
                         _partial.value = ""
                         if (VoiceCommands.isStopCommand(result.text)) {
-                            _statusDetail.value = "Beendet auf Zuruf"
+                            _statusDetail.value = context.getString(R.string.status_stopped_by_voice)
                             break
                         }
                         runTurnInChildJob(result.text)
@@ -225,10 +226,10 @@ class LiveSessionController(
                         if (pendingTypedInput.get() != null) continue
                         silentRounds++
                         if (silentRounds >= MAX_SILENT_ROUNDS) {
-                            _statusDetail.value = "Nach mehreren stillen Minuten pausiert"
+                            _statusDetail.value = context.getString(R.string.status_paused_after_silence)
                             break
                         }
-                        _statusDetail.value = "Nichts gehoert - ich warte weiter"
+                        _statusDetail.value = context.getString(R.string.status_nothing_heard)
                     }
 
                     is SttResult.Failure -> {
@@ -242,7 +243,7 @@ class LiveSessionController(
             throw e
         } catch (t: Throwable) {
             Log.e(TAG, "Live-Schleife abgebrochen", t)
-            _error.value = t.message ?: "Unerwarteter Fehler im Live-Modus."
+            _error.value = t.message ?: context.getString(R.string.error_unexpected)
         } finally {
             _partial.value = ""
             _level.value = 0f
@@ -268,7 +269,7 @@ class LiveSessionController(
         if (speakAloud) stt?.abort()
         appendMessage(Role.USER, userText, streaming = false)
         _state.value = LiveState.THINKING
-        _statusDetail.value = "Ich denke nach"
+        _statusDetail.value = context.getString(R.string.status_thinking)
 
         val assistantId = appendMessage(Role.ASSISTANT, "", streaming = true)
         val chunker = SentenceChunker()
@@ -287,21 +288,24 @@ class LiveSessionController(
         } catch (e: CancellationException) {
             updateMessage(
                 assistantId,
-                SpeechText.forDisplay(collected.toString()).ifEmpty { "(abgebrochen)" },
+                SpeechText.forDisplay(collected.toString()).ifEmpty { context.getString(R.string.cancelled) },
                 streaming = false,
             )
             throw e
         } catch (t: Throwable) {
             Log.e(TAG, "Generierung fehlgeschlagen", t)
-            _error.value = t.message ?: "Das Modell konnte nicht antworten."
+            _error.value = t.message ?: context.getString(R.string.error_model_no_answer)
         }
 
         updateMessage(assistantId, SpeechText.forDisplay(collected.toString()), streaming = false)
 
         if (speakAloud) {
             _state.value = LiveState.SPEAKING
-            _statusDetail.value = "Ich lese vor"
+            _statusDetail.value = context.getString(R.string.status_speaking)
             speaker?.awaitIdle()
+            // Kurz Ruhe lassen: sonst greift der Erkenner nach dem Audiogeraet,
+            // waehrend die Sprachausgabe noch ausklingt.
+            delay(SETTLE_AFTER_SPEECH_MS)
         }
     }
 
@@ -309,7 +313,7 @@ class LiveSessionController(
         val text = SpeechText.forSpeech(chunk)
         if (text.isEmpty()) return
         _state.value = LiveState.SPEAKING
-        _statusDetail.value = "Ich lese vor"
+        _statusDetail.value = context.getString(R.string.status_speaking)
         speaker?.enqueue(text)
     }
 
@@ -317,11 +321,11 @@ class LiveSessionController(
 
     private suspend fun prepareForTurn() {
         _state.value = LiveState.PREPARING
-        _statusDetail.value = "Sprachdienste werden vorbereitet"
+        _statusDetail.value = context.getString(R.string.status_preparing_speech)
         val settings = settingsStore.current
         ensureSpeaker(settings)
         ensureStt(settings)
-        _statusDetail.value = "Modell wird geladen"
+        _statusDetail.value = context.getString(R.string.status_loading_model)
         ensureEngine()
     }
 
@@ -352,7 +356,7 @@ class LiveSessionController(
         val ok = created.prepare()
         speaker = created
         speakerSignature = signature
-        if (!ok) _error.value = "Die Sprachausgabe liess sich nicht starten."
+        if (!ok) _error.value = context.getString(R.string.error_speech_output_failed)
         speakerRelayJob?.cancel()
         speakerRelayJob = scope.launch {
             launch { created.warning.collect { it?.let { message -> _error.value = message } } }
@@ -365,9 +369,7 @@ class LiveSessionController(
         scope.launch {
             _error.value = null
             ensureSpeaker(settingsStore.current)
-            speaker?.speakNow(
-                "Die Sprachausgabe funktioniert. Wenn du das hoerst, ist alles in Ordnung."
-            )
+            speaker?.speakNow(context.getString(R.string.test_speech_sentence))
         }
     }
 
@@ -388,14 +390,15 @@ class LiveSessionController(
 
         val modelFile = models.find(settings.modelFileName)
         val created: LlmEngine = if (modelFile == null) {
-            FallbackLlmEngine()
+            FallbackLlmEngine(context)
         } else {
             runCatching {
                 LiteRtLmEngine.create(context, modelFile, settings.toLlmConfig())
             }.getOrElse { t ->
                 Log.e(TAG, "Modell ${modelFile.name} liess sich nicht laden", t)
-                _error.value = "Modell ${modelFile.name} liess sich nicht laden: ${t.message}"
-                FallbackLlmEngine()
+                _error.value =
+                    context.getString(R.string.error_model_load_failed, modelFile.name, t.message ?: "")
+                FallbackLlmEngine(context)
             }
         }
         engine = created
@@ -436,5 +439,6 @@ class LiveSessionController(
         const val TAG = "LiveSessionController"
         const val MAX_SILENT_ROUNDS = 6
         const val RETRY_DELAY_MS = 800L
+        const val SETTLE_AFTER_SPEECH_MS = 250L
     }
 }

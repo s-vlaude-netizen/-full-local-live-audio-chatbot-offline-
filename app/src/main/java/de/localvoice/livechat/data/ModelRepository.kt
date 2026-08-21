@@ -3,6 +3,7 @@ package de.localvoice.livechat.data
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import de.localvoice.livechat.R
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -62,14 +63,14 @@ class ModelRepository(private val context: Context) {
             runCatching {
                 val name = displayName(uri) ?: "modell-${System.currentTimeMillis()}.litertlm"
                 require(name.substringAfterLast('.', "").lowercase() in SUPPORTED_EXTENSIONS) {
-                    "Nicht unterstuetztes Format: $name"
+                    context.getString(R.string.import_unsupported, name)
                 }
                 val total = sizeOf(uri)
                 val target = File(modelsDir, name)
                 val partial = File(modelsDir, "$name.part")
 
                 context.contentResolver.openInputStream(uri).use { input ->
-                    requireNotNull(input) { "Die Datei liess sich nicht oeffnen." }
+                    requireNotNull(input) { context.getString(R.string.import_open_failed) }
                     partial.outputStream().use { output ->
                         val buffer = ByteArray(1 shl 20)
                         var copied = 0L
@@ -84,7 +85,7 @@ class ModelRepository(private val context: Context) {
                     }
                 }
                 if (target.exists()) target.delete()
-                check(partial.renameTo(target)) { "Die Datei liess sich nicht ablegen." }
+                check(partial.renameTo(target)) { context.getString(R.string.import_place_failed) }
                 target
             }.onFailure {
                 // Abbruch oder Fehler: angefangene Bruchstuecke nicht liegen lassen.

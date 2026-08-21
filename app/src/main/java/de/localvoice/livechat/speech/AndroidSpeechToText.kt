@@ -10,6 +10,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
+import de.localvoice.livechat.R
 import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -56,7 +57,7 @@ class AndroidSpeechToText(
         } catch (t: Throwable) {
             Log.e(TAG, "Spracherkennung nicht verfuegbar", t)
             return@withContext SttResult.Failure(
-                "Auf diesem Geraet ist keine Spracherkennung eingerichtet.",
+                context.getString(R.string.stt_no_recognizer),
                 recoverable = false,
             )
         }
@@ -125,7 +126,7 @@ class AndroidSpeechToText(
                 Log.e(TAG, "startListening fehlgeschlagen", t)
                 if (continuation.isActive) {
                     continuation.resume(
-                        SttResult.Failure("Die Spracherkennung liess sich nicht starten.", true)
+                        SttResult.Failure(context.getString(R.string.stt_start_failed), true)
                     )
                 }
             }
@@ -179,24 +180,23 @@ class AndroidSpeechToText(
         SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> {
             // Der Erkenner haengt gelegentlich; beim naechsten Durchgang neu aufbauen.
             recreateRecognizer()
-            SttResult.Failure("Die Spracherkennung war belegt.", recoverable = true)
+            SttResult.Failure(context.getString(R.string.stt_busy), recoverable = true)
         }
 
         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
-            SttResult.Failure("Die App darf das Mikrofon nicht benutzen.", recoverable = false)
+            SttResult.Failure(context.getString(R.string.stt_no_permission), recoverable = false)
 
         SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE,
         SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED,
         -> SttResult.Failure(
-            "Fuer $languageTag ist kein Offline-Sprachpaket installiert. " +
-                "In den Systemeinstellungen unter Spracheingabe herunterladen.",
+            context.getString(R.string.stt_language_missing, languageTag),
             recoverable = false,
         )
 
         SpeechRecognizer.ERROR_NETWORK,
         SpeechRecognizer.ERROR_NETWORK_TIMEOUT,
         -> SttResult.Failure(
-            "Der Erkenner wollte ins Netz. Offline-Spracherkennung fuer $languageTag installieren.",
+            context.getString(R.string.stt_wants_network, languageTag),
             recoverable = false,
         )
 
@@ -205,7 +205,10 @@ class AndroidSpeechToText(
             SttResult.Silence
         }
 
-        else -> SttResult.Failure("Spracherkennung meldet Fehler $error.", recoverable = true)
+        else -> SttResult.Failure(
+            context.getString(R.string.stt_error_code, error),
+            recoverable = true,
+        )
     }
 
     private fun recreateRecognizer() {

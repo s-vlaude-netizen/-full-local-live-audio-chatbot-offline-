@@ -1,5 +1,8 @@
 package de.localvoice.livechat.data
 
+import android.content.Context
+import de.localvoice.livechat.R
+
 /**
  * Ein Modell, das die App anbieten darf.
  *
@@ -19,34 +22,32 @@ data class CatalogEntry(
     val licenseUrl: String get() = "https://huggingface.co/$repoId"
 }
 
-object ModelCatalog {
+/** Die fest hinterlegte Auswahl, uebersetzt fuer die jeweilige Sprache. */
+class ModelCatalog(context: Context) {
 
     /** Der Vorschlag beim ersten Start. */
-    val DEFAULT: CatalogEntry = CatalogEntry(
+    val default: CatalogEntry = CatalogEntry(
         repoId = "litert-community/Gemma3-1B-IT",
-        title = "Gemma 3 1B IT",
-        sizeLabel = "ca. 0,6 GB",
-        note = "Googles kleines Sprachmodell. Auf dem Telefon fluessig, " +
-            "fuer ein gesprochenes Gespraech gut geeignet.",
+        title = context.getString(R.string.model_gemma1b_title),
+        sizeLabel = context.getString(R.string.model_gemma1b_size),
+        note = context.getString(R.string.model_gemma1b_note),
         gated = true,
     )
 
-    val ENTRIES: List<CatalogEntry> = listOf(
-        DEFAULT,
+    val entries: List<CatalogEntry> = listOf(
+        default,
         CatalogEntry(
             repoId = "litert-community/gemma-3-270m-it",
-            title = "Gemma 3 270M IT",
-            sizeLabel = "ca. 0,3 GB",
-            note = "Sehr klein und schnell, dafuer inhaltlich duenn. " +
-                "Gut, um die Schleife auf schwacher Hardware zu testen.",
+            title = context.getString(R.string.model_gemma270m_title),
+            sizeLabel = context.getString(R.string.model_gemma270m_size),
+            note = context.getString(R.string.model_gemma270m_note),
             gated = true,
         ),
         CatalogEntry(
             repoId = "litert-community/Qwen2.5-1.5B-Instruct",
-            title = "Qwen 2.5 1.5B Instruct",
-            sizeLabel = "ca. 1,6 GB",
-            note = "Groesser und langsamer, antwortet dafuer gehaltvoller. " +
-                "Apache-Lizenz, laedt ohne Token.",
+            title = context.getString(R.string.model_qwen15b_title),
+            sizeLabel = context.getString(R.string.model_qwen15b_size),
+            note = context.getString(R.string.model_qwen15b_note),
             gated = false,
         ),
     )
